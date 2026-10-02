@@ -1,0 +1,931 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  Download, 
+  Archive, 
+  Play, 
+  Pause,
+  Volume2,
+  VolumeX,
+  RotateCcw,
+  Maximize2,
+  Smartphone, 
+  Monitor, 
+  Square, 
+  Sliders, 
+  Check, 
+  Sparkles, 
+  Flame, 
+  Copy,
+  Video,
+  ExternalLink,
+  Scissors,
+  X,
+  AlertCircle,
+  FileVideo,
+  MoveHorizontal
+} from 'lucide-react';
+import JSZip from 'jszip';
+import { GeneratedClip, VideoSourceMetadata } from '../types/driaclip';
+import { formatTimeCode, downloadClipAsMp4, renderClipBlob, createDownloadableClipBlob, calculateClipThumbnailTime } from '../services/videoClipper';
+import { Language, TRANSLATIONS } from '../i18n/translations';
+
+interface ClipDashboardProps {
+  clips: GeneratedClip[];
+  source: VideoSourceMetadata | null;
+  onPreviewClip: (clip: GeneratedClip) => void;
+  onFineTuneClip: (clip: GeneratedClip) => void;
+  onUpdateClipCrop?: (clipId: string, cropX: number) => void;
+  lang: Language;
+}
+
+interface ClipCardItemProps {
+  clip: GeneratedClip;
+  index: number;
+  source: VideoSourceMetadata | null;
+  onPreviewClip: (clip: GeneratedClip) => void;
+  onFineTuneClip: (clip: GeneratedClip) => void;
+  onDownloadSingle: (clip: GeneratedClip) => void;
+  onCopyHook: (clip: GeneratedClip) => void;
+  onUpdateClipCrop?: (clipId: string, cropX: number) => void;
+  isCopied: boolean;
+  isRendering: boolean;
+  renderingPercent: number;
+  isId: boolean;
+  t: any;
+  activePlayingId: string | null;
+  onSetActivePlayingId: (id: string | null) => void;
+}
+
+const ClipCardItem: React.FC<ClipCardItemProps> = ({
+  clip,
+  index,
+  source,
+  onPreviewClip,
+  onFineTuneClip,
+  onDownloadSingle,
+  onCopyHook,
+  onUpdateClipCrop,
+  isCopied,
+  isRendering,
+  renderingPercent,
+  isId,
+  t,
+  activePlayingId,
+  onSetActivePlayingId,
+}) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const isBlob = !!clip.videoBlobUrl;
+  const boundaryStart = isBlob ? 0 : clip.startTime;
+  const boundaryEnd = isBlob ? clip.duration : clip.endTime;
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [clipCurrentTime, setClipCurrentTime] = useState(boundaryStart);
+  const [showControls, setShowControls] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const isVertical = clip.aspectRatio === '9:16';
+  const isSquare = clip.aspectRatio === '1:1';
+  const startThumbSecond = calculateClipThumbnailTime(clip.startTime, clip.endTime);
+
+  const videoSrc = clip.videoBlobUrl || source?.url || '';
+  const isYouTube = !!source?.youtubeId && !clip.videoBlobUrl;
+
+  // Auto detect if source video is 16:9 landscape vs 9:16 portrait
+  const isSourceLandscape = source
+    ? (source.width && source.height ? source.width > source.height : !source.url?.includes('shorts'))
+    : true;
+
+  const [ytElapsed, setYtElapsed] = useState(0);
+  const [ytOffset, setYtOffset] = useState(0);
+  const [ytIframeKey, setYtIframeKey] = useState(0);
+
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    const val = parseFloat(e.target.value);
+    if (isYouTube) {
+      setYtElapsed(val);
+      setYtOffset(val);
+      setYtIframeKey((k) => k + 1);
+      setIsPlaying(true);
+      onSetActivePlayingId(clip.id);
+      return;
+    }
+    if (!videoRef.current) return;
+    const target = boundaryStart + val;
+    videoRef.current.currentTime = target;
+    setClipCurrentTime(target);
+  };
+
+  // Sync DOM property muted with React state
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  // Pause when another clip starts playing
+  useEffect(() => {
+    if (activePlayingId && activePlayingId !== clip.id) {
+      if (isPlaying) {
+        setIsPlaying(false);
+        if (videoRef.current && !videoRef.current.paused) {
+          videoRef.current.pause();
+        }
+      }
+    }
+  }, [activePlayingId, clip.id, isPlaying]);
+
+  // For YouTube playback: track elapsed within clip boundaries smoothly without reloading iframe
+  useEffect(() => {
+    let interval: any = null;
+    if (isYouTube && isPlaying) {
+      interval = setInterval(() => {
+        setYtElapsed((prev) => {
+          if (prev + 1 >= clip.duration) {
+            setIsPlaying(false);
+            onSetActivePlayingId(null);
+            setYtOffset(0);
+            return 0;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isYouTube, isPlaying, clip.duration, onSetActivePlayingId]);
+
+  // Initialize playback time to boundaryStart
+  useEffect(() => {
+    if (videoRef.current && !isPlaying) {
+      if (Math.abs(videoRef.current.currentTime - boundaryStart) > 0.3) {
+        videoRef.current.currentTime = boundaryStart;
+      }
+      setClipCurrentTime(boundaryStart);
+    }
+  }, [boundaryStart, videoSrc, isPlaying]);
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current && !isPlaying) {
+      if (Math.abs(videoRef.current.currentTime - boundaryStart) > 0.5) {
+        videoRef.current.currentTime = boundaryStart;
+      }
+      setClipCurrentTime(boundaryStart);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (!videoRef.current) return;
+    const cur = videoRef.current.currentTime;
+    setClipCurrentTime(cur);
+
+    // Strict boundary enforcement: pause and reset when reaching boundaryEnd
+    if (cur >= boundaryEnd) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+      onSetActivePlayingId(null);
+      videoRef.current.currentTime = boundaryStart;
+      setClipCurrentTime(boundaryStart);
+    }
+  };
+
+  const togglePlay = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isYouTube) {
+      const next = !isPlaying;
+      setIsPlaying(next);
+      if (next) onSetActivePlayingId(clip.id);
+      else onSetActivePlayingId(null);
+      return;
+    }
+
+    if (!videoRef.current) return;
+
+    if (videoRef.current.paused) {
+      onSetActivePlayingId(clip.id);
+      const cur = videoRef.current.currentTime;
+      if (cur < boundaryStart || cur >= boundaryEnd - 0.15) {
+        videoRef.current.currentTime = boundaryStart;
+        setClipCurrentTime(boundaryStart);
+      }
+      try {
+        await videoRef.current.play();
+        setIsPlaying(true);
+      } catch (err) {
+        console.warn('Playback audio blocked, attempting muted playback:', err);
+        if (videoRef.current) {
+          videoRef.current.muted = true;
+          setIsMuted(true);
+          try {
+            await videoRef.current.play();
+            setIsPlaying(true);
+          } catch (e2) {
+            console.error('Playback failed completely:', e2);
+            setIsPlaying(false);
+            onSetActivePlayingId(null);
+          }
+        }
+      }
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+      onSetActivePlayingId(null);
+    }
+  };
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!videoRef.current) return;
+    const nextMuted = !isMuted;
+    videoRef.current.muted = nextMuted;
+    setIsMuted(nextMuted);
+  };
+
+  const resetToStart = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isYouTube) {
+      setYtElapsed(0);
+      setYtOffset(0);
+      setYtIframeKey((k) => k + 1);
+      setIsPlaying(true);
+      onSetActivePlayingId(clip.id);
+      return;
+    }
+
+    if (!videoRef.current) return;
+    onSetActivePlayingId(clip.id);
+    videoRef.current.currentTime = boundaryStart;
+    setClipCurrentTime(boundaryStart);
+    try {
+      await videoRef.current.play();
+      setIsPlaying(true);
+    } catch {
+      videoRef.current.muted = true;
+      setIsMuted(true);
+      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+    }
+  };
+
+  const handleScrubClip = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    if (clip.duration <= 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+
+    if (isYouTube) {
+      const newElapsed = Math.round(ratio * clip.duration);
+      setYtElapsed(newElapsed);
+      setYtOffset(newElapsed);
+      setYtIframeKey((k) => k + 1);
+      setIsPlaying(true);
+      return;
+    }
+
+    if (!videoRef.current) return;
+    const target = boundaryStart + ratio * (boundaryEnd - boundaryStart);
+    videoRef.current.currentTime = target;
+    setClipCurrentTime(target);
+  };
+
+  const activeElapsed = isYouTube 
+    ? ytElapsed 
+    : Math.max(0, Math.min(clip.duration, clipCurrentTime - boundaryStart));
+  const activeProgressPercent = clip.duration > 0 ? (activeElapsed / clip.duration) * 100 : 0;
+
+  return (
+    <div
+      onMouseEnter={() => { setIsHovered(true); setShowControls(true); }}
+      onMouseLeave={() => { setIsHovered(false); setShowControls(false); }}
+      className="group relative flex flex-col rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#0b0f19] overflow-hidden shadow-sm hover:border-violet-500/70 hover:shadow-xl transition-all"
+    >
+      {/* Video Player Container */}
+      <div 
+        className={`relative overflow-hidden bg-black flex items-center justify-center ${
+          isVertical ? 'aspect-[9/16]' : isSquare ? 'aspect-square' : 'aspect-video'
+        }`}
+      >
+        {isYouTube ? (
+          /* YouTube Embed Player */
+          <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
+            {isPlaying ? (
+              <div 
+                className="relative overflow-hidden flex items-center justify-center w-full h-full"
+                style={
+                  isSourceLandscape
+                    ? isVertical
+                      ? { width: '316.05%', height: '100%', position: 'absolute', top: 0, left: `${-( (clip.cropPositionX ?? 50) / 100 * 216.05 )}%` }
+                      : isSquare
+                      ? { width: '177.78%', height: '100%', position: 'absolute', top: 0, left: `${-( (clip.cropPositionX ?? 50) / 100 * 77.78 )}%` }
+                      : { width: '100%', height: '100%' }
+                    : { width: '100%', height: '100%' }
+                }
+              >
+                <iframe
+                  key={ytIframeKey}
+                  src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                  title={clip.title}
+                  className="w-full h-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+                {/* Close / Return to Thumbnail button */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsPlaying(false);
+                    onSetActivePlayingId(null);
+                  }}
+                  className="absolute top-2 right-2 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-black/80 text-white hover:bg-black border border-white/20 transition-all cursor-pointer shadow-lg"
+                  title={isId ? 'Tutup Pemutar' : 'Close Player'}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div 
+                onClick={() => { setIsPlaying(true); setYtElapsed(0); onSetActivePlayingId(clip.id); }}
+                className="relative w-full h-full cursor-pointer flex items-center justify-center"
+              >
+                {/* Thumbnail Start Time Badge */}
+                <div className="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-xs border border-violet-500/50 text-[11px] font-mono font-bold text-violet-300 shadow-md">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                  <span>{isId ? 'Mulai' : 'Start'}: {formatTimeCode(clip.startTime)}</span>
+                </div>
+
+                {clip.thumbnailBlobUrl ? (
+                  <img
+                    src={clip.thumbnailBlobUrl}
+                    alt={clip.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-slate-400">
+                    <Video className="h-8 w-8 text-violet-400" />
+                    <span className="text-xs font-mono">DriaClip</span>
+                  </div>
+                )}
+                
+                <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-2">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-600/95 text-white shadow-lg transform transition-transform group-hover:scale-110">
+                    <Play className="h-6 w-6 fill-white translate-x-0.5" />
+                  </div>
+                  <span className="text-[11px] font-semibold text-white/90 bg-black/60 px-2.5 py-1 rounded-full backdrop-blur-xs">
+                    {isId ? 'Putar Klip' : 'Play Clip'} {index + 1} ({clip.duration}s)
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Video Controls Overlay for YouTube when playing */}
+            {isPlaying && (
+              <div 
+                className={`absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/95 via-black/80 to-transparent p-2.5 flex flex-col gap-1.5 transition-opacity z-20 ${
+                  isPlaying || isHovered || showControls ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                {/* Seek Range Slider for scrubbing during play */}
+                <div className="w-full flex items-center gap-1.5">
+                  <input
+                    type="range"
+                    min="0"
+                    max={clip.duration || 60}
+                    step="0.5"
+                    value={activeElapsed}
+                    onChange={handleSliderChange}
+                    className="w-full h-1.5 accent-violet-500 hover:accent-violet-400 bg-white/30 rounded-lg cursor-pointer"
+                    title={isId ? 'Geser untuk pindah durasi saat memutar' : 'Scrub clip position'}
+                  />
+                </div>
+
+                {/* Controls bar */}
+                <div className="flex items-center justify-between text-white text-xs">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={togglePlay}
+                      className="p-1 hover:text-violet-400 transition-colors cursor-pointer"
+                      title={isPlaying ? (isId ? 'Jeda' : 'Pause') : (isId ? 'Putar' : 'Play')}
+                    >
+                      {isPlaying ? <Pause className="h-3.5 w-3.5 fill-current" /> : <Play className="h-3.5 w-3.5 fill-current" />}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={resetToStart}
+                      className="p-1 hover:text-violet-400 transition-colors cursor-pointer"
+                      title={isId ? 'Ulangi dari awal klip' : 'Restart clip'}
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </button>
+
+                    <span className="font-mono text-[11px] font-bold text-violet-300">
+                      {formatTimeCode(activeElapsed)} / {formatTimeCode(clip.duration)}
+                    </span>
+                  </div>
+
+                  <span className="text-[10px] font-mono text-slate-300">
+                    {formatTimeCode(clip.startTime + activeElapsed)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* HTML5 Native Video Player */
+          <div className="relative w-full h-full flex items-center justify-center">
+            {/* Start timestamp badge when paused */}
+            {!isPlaying && (
+              <div className="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-xs border border-violet-500/50 text-[11px] font-mono font-bold text-violet-300 shadow-md pointer-events-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                <span>{isId ? 'Mulai' : 'Start'}: {formatTimeCode(clip.startTime)}</span>
+              </div>
+            )}
+
+            <video
+              ref={videoRef}
+              src={videoSrc}
+              poster={clip.thumbnailBlobUrl}
+              onLoadedMetadata={handleLoadedMetadata}
+              onTimeUpdate={handleTimeUpdate}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onEnded={() => {
+                setIsPlaying(false);
+                if (videoRef.current) {
+                  videoRef.current.currentTime = boundaryStart;
+                  setClipCurrentTime(boundaryStart);
+                }
+              }}
+              playsInline
+              preload="metadata"
+              muted={isMuted}
+              style={{
+                objectPosition: `${clip.cropPositionX ?? 50}% center`,
+              }}
+              className={`w-full h-full cursor-pointer ${isVertical || isSquare ? 'object-cover' : 'object-contain'}`}
+              onClick={togglePlay}
+            />
+
+            {/* Big Center Play Icon (When paused) */}
+            {!isPlaying && (
+              <button
+                type="button"
+                onClick={togglePlay}
+                className="absolute flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-violet-600/90 text-white backdrop-blur-xs shadow-xl transform transition-transform hover:scale-110 cursor-pointer z-10"
+                aria-label={isId ? 'Putar Klip' : 'Play Clip'}
+              >
+                <Play className="h-6 w-6 fill-white translate-x-0.5" />
+              </button>
+            )}
+
+            {/* Video Controls Overlay */}
+            <div 
+              className={`absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/95 via-black/80 to-transparent p-2.5 flex flex-col gap-1.5 transition-opacity z-20 ${
+                isPlaying || isHovered || showControls ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              {/* Interactive Duration Slider to seek during play */}
+              <div className="w-full flex items-center gap-1.5">
+                <input
+                  type="range"
+                  min="0"
+                  max={clip.duration || 60}
+                  step="0.5"
+                  value={activeElapsed}
+                  onChange={handleSliderChange}
+                  className="w-full h-1.5 accent-violet-500 hover:accent-violet-400 bg-white/30 rounded-lg cursor-pointer"
+                  title={isId ? 'Geser untuk pindah durasi saat memutar video' : 'Scrub clip position'}
+                />
+              </div>
+
+              {/* Controls bar */}
+              <div className="flex items-center justify-between text-white text-xs">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={togglePlay}
+                    className="p-1 hover:text-violet-400 transition-colors cursor-pointer"
+                    title={isPlaying ? (isId ? 'Jeda' : 'Pause') : (isId ? 'Putar' : 'Play')}
+                  >
+                    {isPlaying ? <Pause className="h-3.5 w-3.5 fill-current" /> : <Play className="h-3.5 w-3.5 fill-current" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={resetToStart}
+                    className="p-1 hover:text-violet-400 transition-colors cursor-pointer"
+                    title={isId ? 'Ulangi dari awal klip' : 'Restart clip'}
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </button>
+
+                  <span className="font-mono text-[11px] font-bold text-violet-300">
+                    {formatTimeCode(activeElapsed)} / {formatTimeCode(clip.duration)}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={toggleMute}
+                  className="p-1 hover:text-violet-400 transition-colors cursor-pointer"
+                  title={isMuted ? (isId ? 'Bunyikan' : 'Unmute') : (isId ? 'Bisukan' : 'Mute')}
+                >
+                  {isMuted ? <VolumeX className="h-3.5 w-3.5 text-red-400" /> : <Volume2 className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Top Floating Badges: Klip 1, Klip 2, etc. at top left as requested */}
+        <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between pointer-events-none z-20">
+          <span className="rounded-full bg-violet-600/90 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-mono font-bold text-white border border-violet-400/30 shadow-xs flex items-center gap-1">
+            <span>{isId ? 'Klip' : 'Clip'} {index + 1}</span>
+          </span>
+
+          <div className="flex items-center gap-1">
+            <span className="rounded-full bg-slate-900/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+              {clip.aspectRatio}
+            </span>
+            <span className="rounded-full bg-slate-900/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-mono text-slate-200 border border-white/10 shadow-xs">
+              {clip.duration}s
+            </span>
+          </div>
+        </div>
+
+        {/* Slice status indicator */}
+        {clip.videoBlobUrl && (
+          <div className="absolute bottom-2.5 left-2.5 z-20 pointer-events-none">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/90 text-white text-[9px] font-bold px-2 py-0.5 backdrop-blur-xs shadow-xs">
+              <Check className="h-2.5 w-2.5" />
+              <span>{isId ? 'Terpotong Presisi' : 'Precision Cut'}</span>
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Card Info & Actions */}
+      <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+        <div>
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 line-clamp-1 leading-snug">
+              {clip.title}
+            </h3>
+            <span className="shrink-0 text-[10px] font-mono text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60 border border-violet-200 dark:border-violet-800 px-2 py-0.5 rounded font-bold">
+              {formatTimeCode(clip.startTime)} - {formatTimeCode(clip.endTime)} ({clip.duration}s)
+            </span>
+          </div>
+
+          {/* Independent Frame Position Slider for this specific clip - Only if source is 16:9 landscape! */}
+          {isSourceLandscape && (clip.aspectRatio === '9:16' || clip.aspectRatio === '1:1') && (
+            <div className="mt-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <MoveHorizontal className="h-3.5 w-3.5 text-violet-500" />
+                  <span>{isId ? 'Posisi Frame:' : 'Frame Position:'}</span>
+                </span>
+                <span className="font-mono font-bold text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-950/70 px-2 py-0.5 rounded text-[11px]">
+                  {clip.cropPositionX ?? 50}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={clip.cropPositionX ?? 50}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  onUpdateClipCrop?.(clip.id, parseInt(e.target.value));
+                }}
+                className="w-full h-1.5 accent-violet-600 bg-slate-200 dark:bg-slate-800 rounded-lg cursor-pointer"
+                title={isId ? 'Geser posisi frame (0% - 100%)' : 'Adjust frame position (0% - 100%)'}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 uppercase px-1">
+              {clip.exportQuality}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {/* If YouTube, provide direct link to timestamp */}
+            {isYouTube && source?.youtubeId && (
+              <a
+                href={`https://www.youtube.com/watch?v=${source.youtubeId}&t=${Math.round(clip.startTime)}s`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+                title={isId ? 'Buka segmen ini langsung di YouTube' : 'Open this segment directly on YouTube'}
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
+
+            <button
+              type="button"
+              onClick={() => onFineTuneClip(clip)}
+              className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-violet-600 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors cursor-pointer"
+              title={t.dashboard.fineTune}
+            >
+              <Sliders className="h-3.5 w-3.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onPreviewClip(clip)}
+              className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-violet-600 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors cursor-pointer"
+              title={t.dashboard.previewFull}
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+
+            {/* Smart Cut & Download Button - Changed label to 'Unduh' as requested */}
+            <button
+              type="button"
+              disabled={isRendering}
+              onClick={() => onDownloadSingle(clip)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-violet-600 hover:bg-violet-500 shadow-xs transition-colors cursor-pointer leading-none disabled:opacity-50"
+              title={isId ? `Unduh Klip ${index + 1} (${clip.duration} Detik)` : `Download Clip ${index + 1} (${clip.duration}s)`}
+            >
+              {isRendering ? (
+                <>
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>{renderingPercent}%</span>
+                </>
+              ) : (
+                <>
+                  <Download className="h-3.5 w-3.5" />
+                  <span>{isId ? 'Unduh' : 'Download'}</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const ClipDashboard: React.FC<ClipDashboardProps> = ({
+  clips,
+  source,
+  onPreviewClip,
+  onFineTuneClip,
+  onUpdateClipCrop,
+  lang,
+}) => {
+  const t = TRANSLATIONS[lang];
+  const isId = lang === 'id';
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isZipping, setIsZipping] = useState(false);
+  const [zipProgress, setZipProgress] = useState(0);
+  const [activePlayingClipId, setActivePlayingClipId] = useState<string | null>(null);
+
+  // Active rendering state for offline video slicing
+  const [renderingClip, setRenderingClip] = useState<{
+    id: string;
+    progress: number;
+    title: string;
+    duration: number;
+  } | null>(null);
+
+  const handleCopyHook = (clip: GeneratedClip) => {
+    navigator.clipboard.writeText(`${clip.hookText}\n\n${clip.tags.map(t => `#${t.replace(/\s+/g, '')}`).join(' ')}`);
+    setCopiedId(clip.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // Download single clip directly into user storage!
+  const handleDownloadSingle = async (clip: GeneratedClip) => {
+    // 1. If video blob already generated, download immediately!
+    if (clip.videoBlobUrl) {
+      downloadClipAsMp4(clip);
+      return;
+    }
+
+    // 2. If YouTube source, generate downloadable clip file and save immediately without any popup!
+    if (source?.youtubeId) {
+      try {
+        setRenderingClip({
+          id: clip.id,
+          progress: 30,
+          title: clip.title,
+          duration: clip.duration,
+        });
+
+        const result = await createDownloadableClipBlob(clip, source.thumbnailUrl, (percent) => {
+          setRenderingClip((prev) => (prev ? { ...prev, progress: Math.max(5, percent) } : null));
+        });
+        clip.videoBlobUrl = result.url;
+        downloadClipAsMp4(clip);
+      } catch (err) {
+        console.error('Failed to create clip blob:', err);
+      } finally {
+        setRenderingClip(null);
+      }
+      return;
+    }
+
+    // 3. If offline file or direct stream, slice the exact clip duration!
+    if (source?.url) {
+      try {
+        setRenderingClip({
+          id: clip.id,
+          progress: 5,
+          title: clip.title,
+          duration: clip.duration,
+        });
+
+        const result = await renderClipBlob(
+          source.url,
+          clip.startTime,
+          clip.endTime,
+          clip.aspectRatio,
+          clip.verticalStyle,
+          clip.exportQuality || '720p',
+          (percent) => {
+            setRenderingClip((prev) => (prev ? { ...prev, progress: Math.max(5, percent) } : null));
+          },
+          clip.cropPositionX ?? 50
+        );
+
+        clip.videoBlobUrl = result.url;
+        clip.estimatedSizeBytes = result.size;
+
+        // Trigger download of the exact cut clip!
+        downloadClipAsMp4(clip);
+      } catch (err) {
+        console.error('Failed to render clip slice:', err);
+      } finally {
+        setRenderingClip(null);
+      }
+    }
+  };
+
+  // Batch download as ZIP with clean manifests
+  const handleBatchDownloadZip = async () => {
+    if (clips.length === 0) return;
+    setIsZipping(true);
+    setZipProgress(10);
+
+    try {
+      const zip = new JSZip();
+      const folder = zip.folder('DriaClip_Export');
+
+      // Create manifest TXT
+      let manifestTxt = `DriaClip Batch Export Manifest\n`;
+      manifestTxt += `Master Video: ${source?.title || 'Video Ingestion'}\n`;
+      manifestTxt += `Total Clips: ${clips.length}\n`;
+      manifestTxt += `Generated At: ${new Date().toISOString()}\n\n`;
+
+      clips.forEach((clip, i) => {
+        manifestTxt += `----------------------------------------\n`;
+        manifestTxt += `CLIP #${i + 1}: ${clip.title}\n`;
+        manifestTxt += `Time Range: ${formatTimeCode(clip.startTime)} - ${formatTimeCode(clip.endTime)} (${clip.duration}s)\n`;
+        manifestTxt += `Aspect Ratio: ${clip.aspectRatio} (${clip.verticalStyle})\n`;
+        manifestTxt += `Export Quality: ${clip.exportQuality}\n`;
+        manifestTxt += `Viral Score: ${clip.score}/100\n`;
+        manifestTxt += `Hook: ${clip.hookText}\n`;
+        manifestTxt += `Tags: ${clip.tags.join(', ')}\n\n`;
+      });
+
+      folder?.file('manifest.txt', manifestTxt);
+
+      // Create metadata JSON
+      folder?.file('metadata.json', JSON.stringify({
+        project: 'DriaClip',
+        exportedAt: new Date().toISOString(),
+        sourceTitle: source?.title,
+        totalClips: clips.length,
+        clips: clips.map(c => ({
+          id: c.id,
+          title: c.title,
+          hook: c.hookText,
+          startTime: c.startTime,
+          endTime: c.endTime,
+          duration: c.duration,
+          aspectRatio: c.aspectRatio,
+          exportQuality: c.exportQuality,
+          viralScore: c.score,
+          tags: c.tags,
+        }))
+      }, null, 2));
+
+      setZipProgress(50);
+
+      for (let i = 0; i < clips.length; i++) {
+        const c = clips[i];
+        if (c.videoBlobUrl) {
+          const res = await fetch(c.videoBlobUrl);
+          const blob = await res.blob();
+          folder?.file(`clip_${i + 1}_${c.duration}s_${c.exportQuality}_${c.aspectRatio.replace(':', 'x')}.mp4`, blob);
+        } else {
+          folder?.file(`clip_${i + 1}_info.txt`, `Clip: ${c.title}\nDuration: ${c.duration}s\nResolution: ${c.exportQuality}\nCut Range: ${formatTimeCode(c.startTime)} - ${formatTimeCode(c.endTime)}\nRatio: ${c.aspectRatio}\nHook: ${c.hookText}`);
+        }
+        setZipProgress(50 + Math.round(((i + 1) / clips.length) * 40));
+      }
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const downloadUrl = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `DriaClip_Batch_${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error('Batch zip creation failed:', err);
+    } finally {
+      setIsZipping(false);
+      setZipProgress(0);
+    }
+  };
+
+  return (
+    <div id="clips-dashboard" className="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#0f172a]/95 p-4 sm:p-7 shadow-lg backdrop-blur-md space-y-6 transition-colors w-full">
+      {/* Header - clean without step badge or dummy counts */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 dark:border-slate-800/80 pb-4">
+        <div>
+          <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <span>{t.dashboard.title}</span>
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {t.dashboard.subtitle}
+          </p>
+        </div>
+
+        {/* Batch Actions (Clean prominent Batch Download ZIP button) */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleBatchDownloadZip}
+            disabled={isZipping || clips.length === 0}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-xs font-bold text-white shadow-md shadow-violet-500/20 transition-all disabled:opacity-50 cursor-pointer"
+          >
+            {isZipping ? (
+              <>
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent shrink-0" />
+                <span>{t.dashboard.zipping} ({zipProgress}%)...</span>
+              </>
+            ) : (
+              <>
+                <Archive className="h-4 w-4 shrink-0" />
+                <span>{t.dashboard.batchDownload}</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Empty State */}
+      {clips.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-[#0b0f19]/60 p-10 sm:p-14 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 dark:bg-slate-900 text-violet-600 dark:text-violet-400 mb-3 border border-violet-200 dark:border-slate-800 shadow-xs">
+            <Sparkles className="h-6 w-6" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+            {t.dashboard.noClipsTitle}
+          </h3>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed">
+            {t.dashboard.noClipsDesc}
+          </p>
+        </div>
+      )}
+
+      {/* Grid of Generated Clips (with active video players!) */}
+      {clips.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {clips.map((clip, idx) => (
+            <ClipCardItem
+              key={clip.id}
+              clip={clip}
+              index={idx}
+              source={source}
+              onPreviewClip={onPreviewClip}
+              onFineTuneClip={onFineTuneClip}
+              onDownloadSingle={handleDownloadSingle}
+              onCopyHook={handleCopyHook}
+              onUpdateClipCrop={onUpdateClipCrop}
+              isCopied={copiedId === clip.id}
+              isRendering={renderingClip?.id === clip.id}
+              renderingPercent={renderingClip?.id === clip.id ? renderingClip.progress : 0}
+              isId={isId}
+              t={t}
+              activePlayingId={activePlayingClipId}
+              onSetActivePlayingId={setActivePlayingClipId}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};

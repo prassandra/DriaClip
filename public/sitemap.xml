@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <!-- Homepage -->
+  <url>
+    <loc>https://driaclip.driacom.com/</loc>
+    <lastmod>2026-09-28</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://driaclip.driacom.com/?lang=en" />
+    <xhtml:link rel="alternate" hreflang="id" href="https://driaclip.driacom.com/?lang=id" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://driaclip.driacom.com/" />
+  </url>
+
+  <!-- About Us -->
+  <url>
+    <loc>https://driaclip.driacom.com/about</loc>
+    <lastmod>2026-09-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://driaclip.driacom.com/about?lang=en" />
+    <xhtml:link rel="alternate" hreflang="id" href="https://driaclip.driacom.com/about?lang=id" />
+  </url>
+
+  <!-- Contact Us -->
+  <url>
+    <loc>https://driaclip.driacom.com/contact</loc>
+    <lastmod>2026-09-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://driaclip.driacom.com/contact?lang=en" />
+    <xhtml:link rel="alternate" hreflang="id" href="https://driaclip.driacom.com/contact?lang=id" />
+  </url>
+
+  <!-- Privacy Policy -->
+  <url>
+    <loc>https://driaclip.driacom.com/privacy</loc>
+    <lastmod>2026-09-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://driaclip.driacom.com/privacy?lang=en" />
+    <xhtml:link rel="alternate" hreflang="id" href="https://driaclip.driacom.com/privacy?lang=id" />
+  </url>
+
+  <!-- Disclaimer & Copyright Guidelines -->
+  <url>
+    <loc>https://driaclip.driacom.com/disclaimer</loc>
+    <lastmod>2026-09-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://driaclip.driacom.com/disclaimer?lang=en" />
+    <xhtml:link rel="alternate" hreflang="id" href="https://driaclip.driacom.com/disclaimer?lang=id" />
+  </url>
+</urlset>

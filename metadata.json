@@ -1,0 +1,6 @@
+{
+  "name": "DriaClip by Driacom",
+  "description": "Automated and semi-automated video trimming & highlight clipping platform by Driacom. Process long-form video into viral short clips with custom durations and aspect ratios.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

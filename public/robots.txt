@@ -1,0 +1,17 @@
+# robots.txt for DriaClip by Driacom (https://driaclip.driacom.com)
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /disclaimer
+
+# Crawl-delay for polite indexation
+Crawl-delay: 1
+
+# Disallow transient processing artifacts or internal paths
+Disallow: /api/internal/
+Disallow: /tmp/
+
+# High-priority XML Sitemaps
+Sitemap: https://driaclip.driacom.com/sitemap.xml
