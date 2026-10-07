@@ -25,8 +25,15 @@ import {
   MoveHorizontal
 } from 'lucide-react';
 import JSZip from 'jszip';
+import { 
+  formatTimeCode, 
+  downloadClipAsMp4, 
+  renderClipBlob, 
+  createDownloadableClipBlob, 
+  calculateClipThumbnailTime,
+  downloadServerRenderedClip 
+} from '../services/videoClipper';
 import { GeneratedClip, VideoSourceMetadata } from '../types/driaclip';
-import { formatTimeCode, downloadClipAsMp4, renderClipBlob, createDownloadableClipBlob, calculateClipThumbnailTime } from '../services/videoClipper';
 import { Language, TRANSLATIONS } from '../i18n/translations';
 
 interface ClipDashboardProps {
@@ -308,42 +315,98 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
       >
         {isYouTube ? (
           /* YouTube Embed Player */
-          <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
+          <div className="relative w-full h-full overflow-hidden flex items-center justify-center bg-black">
             {isPlaying ? (
-              <div 
-                className="relative overflow-hidden flex items-center justify-center w-full h-full"
-                style={
-                  isSourceLandscape
-                    ? isVertical
-                      ? { width: '316.05%', height: '100%', position: 'absolute', top: 0, left: `${-( (clip.cropPositionX ?? 50) / 100 * 216.05 )}%` }
-                      : isSquare
-                      ? { width: '177.78%', height: '100%', position: 'absolute', top: 0, left: `${-( (clip.cropPositionX ?? 50) / 100 * 77.78 )}%` }
+              isVertical && clip.verticalStyle === 'blur-background' ? (
+                <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-black">
+                  <img
+                    src={clip.thumbnailBlobUrl || source?.thumbnailUrl}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-70 pointer-events-none"
+                  />
+                  <div className="relative z-10 w-full aspect-video shadow-2xl">
+                    <iframe
+                      key={ytIframeKey}
+                      src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                      title={clip.title}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsPlaying(false);
+                      onSetActivePlayingId(null);
+                    }}
+                    className="absolute top-2 right-2 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-black/80 text-white hover:bg-black border border-white/20 transition-all cursor-pointer shadow-lg"
+                    title={isId ? 'Tutup Pemutar' : 'Close Player'}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : isVertical && clip.verticalStyle === 'letterbox' ? (
+                <div className="relative w-full h-full flex items-center justify-center bg-black">
+                  <div className="relative z-10 w-full aspect-video shadow-2xl">
+                    <iframe
+                      key={ytIframeKey}
+                      src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                      title={clip.title}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsPlaying(false);
+                      onSetActivePlayingId(null);
+                    }}
+                    className="absolute top-2 right-2 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-black/80 text-white hover:bg-black border border-white/20 transition-all cursor-pointer shadow-lg"
+                    title={isId ? 'Tutup Pemutar' : 'Close Player'}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div 
+                  className="relative overflow-hidden flex items-center justify-center w-full h-full"
+                  style={
+                    isSourceLandscape
+                      ? isVertical
+                        ? { width: '316.05%', height: '100%', position: 'absolute', top: 0, left: `${-( (clip.cropPositionX ?? 50) / 100 * 216.05 )}%` }
+                        : isSquare
+                        ? { width: '177.78%', height: '100%', position: 'absolute', top: 0, left: `${-( (clip.cropPositionX ?? 50) / 100 * 77.78 )}%` }
+                        : { width: '100%', height: '100%' }
                       : { width: '100%', height: '100%' }
-                    : { width: '100%', height: '100%' }
-                }
-              >
-                <iframe
-                  key={ytIframeKey}
-                  src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
-                  title={clip.title}
-                  className="w-full h-full border-0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-                {/* Close / Return to Thumbnail button */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsPlaying(false);
-                    onSetActivePlayingId(null);
-                  }}
-                  className="absolute top-2 right-2 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-black/80 text-white hover:bg-black border border-white/20 transition-all cursor-pointer shadow-lg"
-                  title={isId ? 'Tutup Pemutar' : 'Close Player'}
+                  }
                 >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+                  <iframe
+                    key={ytIframeKey}
+                    src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                    title={clip.title}
+                    className="w-full h-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsPlaying(false);
+                      onSetActivePlayingId(null);
+                    }}
+                    className="absolute top-2 right-2 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-black/80 text-white hover:bg-black border border-white/20 transition-all cursor-pointer shadow-lg"
+                    title={isId ? 'Tutup Pemutar' : 'Close Player'}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )
             ) : (
               <div 
                 onClick={() => { setIsPlaying(true); setYtElapsed(0); onSetActivePlayingId(clip.id); }}
@@ -444,6 +507,21 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
               </div>
             )}
 
+            {isVertical && clip.verticalStyle === 'blur-background' && (
+              <>
+                <img
+                  src={clip.thumbnailBlobUrl || source?.thumbnailUrl}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-65 pointer-events-none"
+                />
+                <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+              </>
+            )}
+
+            {isVertical && clip.verticalStyle === 'letterbox' && (
+              <div className="absolute inset-0 bg-black pointer-events-none" />
+            )}
+
             <video
               ref={videoRef}
               src={videoSrc}
@@ -463,9 +541,19 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
               preload="metadata"
               muted={isMuted}
               style={{
-                objectPosition: `${clip.cropPositionX ?? 50}% center`,
+                objectPosition: clip.verticalStyle === 'auto-track' ? `${clip.cropPositionX ?? 50}% center` : 'center center',
               }}
-              className={`w-full h-full cursor-pointer ${isVertical || isSquare ? 'object-cover' : 'object-contain'}`}
+              className={`w-full h-full cursor-pointer relative z-10 ${
+                isVertical
+                  ? clip.verticalStyle === 'blur-background'
+                    ? 'object-contain'
+                    : clip.verticalStyle === 'letterbox'
+                    ? 'object-contain bg-black'
+                    : 'object-cover'
+                  : isSquare
+                  ? 'object-cover'
+                  : 'object-contain'
+              }`}
               onClick={togglePlay}
             />
 
@@ -547,6 +635,11 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
           </span>
 
           <div className="flex items-center gap-1">
+            {clip.verticalStyle === 'auto-track' && (
+              <span className="rounded-full bg-emerald-600/90 backdrop-blur-md px-2 py-0.5 text-[9px] font-mono font-bold text-white border border-emerald-400/30 shadow-xs flex items-center gap-1">
+                <span>🤖 Auto-Follow</span>
+              </span>
+            )}
             <span className="rounded-full bg-slate-900/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
               {clip.aspectRatio}
             </span>
@@ -578,34 +671,6 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
               {formatTimeCode(clip.startTime)} - {formatTimeCode(clip.endTime)} ({clip.duration}s)
             </span>
           </div>
-
-          {/* Independent Frame Position Slider for this specific clip - Only if source is 16:9 landscape! */}
-          {isSourceLandscape && (clip.aspectRatio === '9:16' || clip.aspectRatio === '1:1') && (
-            <div className="mt-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 space-y-1.5">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <MoveHorizontal className="h-3.5 w-3.5 text-violet-500" />
-                  <span>{isId ? 'Posisi Frame:' : 'Frame Position:'}</span>
-                </span>
-                <span className="font-mono font-bold text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-950/70 px-2 py-0.5 rounded text-[11px]">
-                  {clip.cropPositionX ?? 50}%
-                </span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                value={clip.cropPositionX ?? 50}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  onUpdateClipCrop?.(clip.id, parseInt(e.target.value));
-                }}
-                className="w-full h-1.5 accent-violet-600 bg-slate-200 dark:bg-slate-800 rounded-lg cursor-pointer"
-                title={isId ? 'Geser posisi frame (0% - 100%)' : 'Adjust frame position (0% - 100%)'}
-              />
-            </div>
-          )}
         </div>
 
         {/* Action Buttons */}
@@ -699,7 +764,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
   } | null>(null);
 
   const handleCopyHook = (clip: GeneratedClip) => {
-    navigator.clipboard.writeText(`${clip.hookText}\n\n${clip.tags.map(t => `#${t.replace(/\s+/g, '')}`).join(' ')}`);
+    navigator.clipboard.writeText(`${clip.hookText}\n\n${clip.tags.map((tg: string) => `#${tg.replace(/\s+/g, '')}`).join(' ')}`);
     setCopiedId(clip.id);
     setTimeout(() => setCopiedId(null), 2000);
   };
@@ -712,8 +777,8 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
       return;
     }
 
-    // 2. If YouTube source, generate downloadable clip file and save immediately without any popup!
-    if (source?.youtubeId) {
+    // 2. If YouTube source or online video: render genuine real MP4 video via server (yt-dlp + ffmpeg)!
+    if (source?.youtubeId || (source?.url && !source.url.startsWith('blob:'))) {
       try {
         setRenderingClip({
           id: clip.id,
@@ -722,25 +787,23 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
           duration: clip.duration,
         });
 
-        const result = await createDownloadableClipBlob(clip, source.thumbnailUrl, (percent) => {
-          setRenderingClip((prev) => (prev ? { ...prev, progress: Math.max(5, percent) } : null));
-        });
+        const result = await downloadServerRenderedClip(clip, source.url, source.youtubeId);
         clip.videoBlobUrl = result.url;
-        downloadClipAsMp4(clip);
+        downloadClipAsMp4(clip, undefined, 'mp4');
+        return;
       } catch (err) {
-        console.error('Failed to create clip blob:', err);
+        console.warn('Server render notice, trying local fallback:', err);
       } finally {
         setRenderingClip(null);
       }
-      return;
     }
 
-    // 3. If offline file or direct stream, slice the exact clip duration!
+    // 3. If offline file or direct stream, slice the exact clip in browser!
     if (source?.url) {
       try {
         setRenderingClip({
           id: clip.id,
-          progress: 5,
+          progress: 10,
           title: clip.title,
           duration: clip.duration,
         });
@@ -755,14 +818,15 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
           (percent) => {
             setRenderingClip((prev) => (prev ? { ...prev, progress: Math.max(5, percent) } : null));
           },
-          clip.cropPositionX ?? 50
+          clip.cropPositionX ?? 50,
+          clip.trackingKeyframes
         );
 
         clip.videoBlobUrl = result.url;
         clip.estimatedSizeBytes = result.size;
 
-        // Trigger download of the exact cut clip!
-        downloadClipAsMp4(clip);
+        // Trigger download with correct format
+        downloadClipAsMp4(clip, undefined, result.extension);
       } catch (err) {
         console.error('Failed to render clip slice:', err);
       } finally {
@@ -917,7 +981,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
               onUpdateClipCrop={onUpdateClipCrop}
               isCopied={copiedId === clip.id}
               isRendering={renderingClip?.id === clip.id}
-              renderingPercent={renderingClip?.id === clip.id ? renderingClip.progress : 0}
+              renderingPercent={renderingClip?.id === clip.id ? (renderingClip?.progress ?? 0) : 0}
               isId={isId}
               t={t}
               activePlayingId={activePlayingClipId}

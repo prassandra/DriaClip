@@ -1,4 +1,5 @@
-import { AspectRatio, VerticalStyle, GeneratedClip, ExportQuality } from '../types/driaclip';
+import { AspectRatio, VerticalStyle, GeneratedClip, ExportQuality, TrackingKeyframe } from '../types/driaclip';
+import { SmoothCameraFollower, detectSpeakerFocusX, interpolateTrackingCropX } from './smartTracking';
 
 /**
  * Calculates the exact second to capture the starting thumbnail frame for a clip.
@@ -203,7 +204,7 @@ export async function captureVideoThumbnail(
             if (aspectRatio === '9:16') {
               if (verticalStyle === 'blur-background') {
                 ctx.save();
-                ctx.filter = 'blur(16px) brightness(0.6)';
+                ctx.filter = 'blur(16px) brightness(0.65)';
                 const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
                 const bgW = img.naturalWidth * scale;
                 const bgH = img.naturalHeight * scale;
@@ -213,8 +214,16 @@ export async function captureVideoThumbnail(
                 const fitScale = width / img.naturalWidth;
                 const fgH = img.naturalHeight * fitScale;
                 ctx.drawImage(img, 0, (height - fgH) / 2, width, fgH);
+              } else if (verticalStyle === 'letterbox') {
+                // Pure black letterbox bars top and bottom
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, width, height);
+
+                const fitScale = width / img.naturalWidth;
+                const fgH = img.naturalHeight * fitScale;
+                ctx.drawImage(img, 0, (height - fgH) / 2, width, fgH);
               } else {
-                // center-crop or custom cropPositionX
+                // auto-track or focal crop
                 const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
                 const renderW = img.naturalWidth * scale;
                 const renderH = img.naturalHeight * scale;
@@ -394,7 +403,7 @@ export async function captureVideoThumbnail(
           if (verticalStyle === 'blur-background') {
             // Blurred background
             ctx.save();
-            ctx.filter = 'blur(18px) brightness(0.6)';
+            ctx.filter = 'blur(18px) brightness(0.65)';
             const scale = Math.max(width / vw, height / vh);
             const bgW = vw * scale;
             const bgH = vh * scale;
@@ -405,18 +414,20 @@ export async function captureVideoThumbnail(
             const fitScale = width / vw;
             const fgH = vh * fitScale;
             ctx.drawImage(video, 0, (height - fgH) / 2, width, fgH);
-          } else if (verticalStyle === 'center-crop') {
+          } else if (verticalStyle === 'letterbox') {
+            // Clean true black letterbox bars top and bottom
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, width, height);
+            const fitScale = width / vw;
+            const fgH = vh * fitScale;
+            ctx.drawImage(video, 0, (height - fgH) / 2, width, fgH);
+          } else {
+            // auto-track: dynamic crop
             const cropW = (vh * 9) / 16;
             const maxCropX = Math.max(0, vw - cropW);
             const ratio = Math.max(0, Math.min(100, cropPositionX)) / 100;
             const cropX = maxCropX * ratio;
             ctx.drawImage(video, cropX, 0, cropW, vh, 0, 0, width, height);
-          } else {
-            ctx.fillStyle = '#09090b';
-            ctx.fillRect(0, 0, width, height);
-            const fitScale = width / vw;
-            const fgH = vh * fitScale;
-            ctx.drawImage(video, 0, (height - fgH) / 2, width, fgH);
           }
         } else if (aspectRatio === '1:1') {
           const minDim = Math.min(vw, vh);
@@ -577,20 +588,23 @@ export async function renderClipBlob(
   verticalStyle: VerticalStyle,
   quality: ExportQuality = '720p',
   onProgress?: (percent: number) => void,
-  cropPositionX: number = 50
-): Promise<{ blob: Blob; url: string; size: number }> {
+  cropPositionX: number = 50,
+  trackingKeyframes?: TrackingKeyframe[]
+): Promise<{ blob: Blob; url: string; size: number; extension: 'mp4' | 'webm' }> {
   return new Promise(async (resolve, reject) => {
     const targetDuration = Math.max(0.5, endTime - startTime);
 
-    // Create off-screen video element attached to DOM to prevent background execution throttling
+    // Create off-screen video element attached to DOM with active compositing dimensions
+    // to prevent browser hardware video decoding suspension/throttling!
     const video = document.createElement('video');
     video.style.position = 'fixed';
-    video.style.top = '-9999px';
-    video.style.left = '-9999px';
-    video.style.width = '2px';
-    video.style.height = '2px';
-    video.style.opacity = '0.01';
+    video.style.bottom = '0px';
+    video.style.right = '0px';
+    video.style.width = '320px';
+    video.style.height = '180px';
+    video.style.opacity = '0.02';
     video.style.pointerEvents = 'none';
+    video.style.zIndex = '-9999';
     document.body.appendChild(video);
 
     if (!videoUrl.startsWith('blob:') && !videoUrl.startsWith('data:')) {
@@ -599,11 +613,11 @@ export async function renderClipBlob(
     video.src = videoUrl;
     video.preload = 'auto';
     video.playsInline = true;
-    video.muted = false; // Kept unmuted for audio capture; silence is routed via Web Audio
+    video.muted = false;
 
     // Resolution sizing
-    let targetW = 1280;
-    let targetH = 720;
+    let targetW = 720;
+    let targetH = 1280;
     if (quality === '1080p') {
       targetW = aspectRatio === '9:16' ? 1080 : aspectRatio === '1:1' ? 1080 : 1920;
       targetH = aspectRatio === '9:16' ? 1920 : aspectRatio === '1:1' ? 1080 : 1080;
@@ -622,6 +636,12 @@ export async function renderClipBlob(
     canvas.width = targetW;
     canvas.height = targetH;
     const ctx = canvas.getContext('2d');
+
+    // Fast off-screen blur canvas for silky-smooth 60fps hardware blur without UI stall
+    const blurCanvas = document.createElement('canvas');
+    blurCanvas.width = 180;
+    blurCanvas.height = 320;
+    const blurCtx = blurCanvas.getContext('2d');
 
     if (!ctx) {
       if (video.parentNode) video.parentNode.removeChild(video);
@@ -653,11 +673,9 @@ export async function renderClipBlob(
           const sourceNode = audioCtx.createMediaElementSource(video);
           const destNode = audioCtx.createMediaStreamDestination();
           sourceNode.connect(destNode);
-          // Only connected to recorder destNode, NOT audioCtx.destination!
           destNode.stream.getAudioTracks().forEach((track) => stream.addTrack(track));
         }
       } catch {
-        // Fallback: direct captureStream audio
         try {
           const vStream = (video as any).captureStream ? (video as any).captureStream() : null;
           if (vStream) {
@@ -666,17 +684,22 @@ export async function renderClipBlob(
         } catch {}
       }
 
-      // Step 4: Determine MIME type
+      // Step 4: Determine best supported MIME type
       let mimeType = 'video/webm';
+      let chosenExt: 'mp4' | 'webm' = 'webm';
       if (typeof MediaRecorder !== 'undefined') {
         if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2')) {
           mimeType = 'video/mp4;codecs=avc1,mp4a.40.2';
+          chosenExt = 'mp4';
         } else if (MediaRecorder.isTypeSupported('video/mp4')) {
           mimeType = 'video/mp4';
+          chosenExt = 'mp4';
         } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
           mimeType = 'video/webm;codecs=vp9,opus';
+          chosenExt = 'webm';
         } else if (MediaRecorder.isTypeSupported('video/webm')) {
           mimeType = 'video/webm';
+          chosenExt = 'webm';
         }
       }
 
@@ -704,7 +727,6 @@ export async function renderClipBlob(
       try {
         await video.play();
       } catch {
-        // If autoplay blocked sound, mute and play
         video.muted = true;
         try {
           await video.play();
@@ -719,6 +741,11 @@ export async function renderClipBlob(
       let animationFrameId: number;
       let intervalId: any;
 
+      // Smart Auto-Follow Steadicam Camera Follower
+      const cameraFollower = new SmoothCameraFollower(cropPositionX, 0.1, 2.5);
+      let lastAnalysisTime = 0;
+      let prevAnalysisData: ImageData | null = null;
+
       const finishRecording = () => {
         if (isDone) return;
         isDone = true;
@@ -732,17 +759,7 @@ export async function renderClipBlob(
       };
 
       recorder.onstop = async () => {
-        let finalBlob = new Blob(chunks, { type: mimeType });
-
-        // Apply WebM Duration Fix so duration is NEVER 00:00!
-        if (mimeType.includes('webm')) {
-          try {
-            finalBlob = await fixWebmDuration(finalBlob, targetDuration * 1000);
-          } catch (err) {
-            console.warn('Duration fix notice:', err);
-          }
-        }
-
+        const finalBlob = new Blob(chunks, { type: mimeType });
         const blobUrl = URL.createObjectURL(finalBlob);
 
         // Cleanup
@@ -753,7 +770,7 @@ export async function renderClipBlob(
           audioCtx.close().catch(() => {});
         }
 
-        resolve({ blob: finalBlob, url: blobUrl, size: finalBlob.size });
+        resolve({ blob: finalBlob, url: blobUrl, size: finalBlob.size, extension: chosenExt });
       };
 
       const drawLoop = () => {
@@ -768,36 +785,68 @@ export async function renderClipBlob(
         const vw = video.videoWidth || 1280;
         const vh = video.videoHeight || 720;
 
+        // Dynamic auto-follow crop calculation
+        let currentEffectiveCropX = cropPositionX;
+
+        if (verticalStyle === 'auto-track') {
+          if (trackingKeyframes && trackingKeyframes.length > 0) {
+            const interpolatedTarget = interpolateTrackingCropX(trackingKeyframes, cur, cropPositionX);
+            currentEffectiveCropX = cameraFollower.update(interpolatedTarget);
+          } else {
+            // Live real-time computer vision analysis every ~350ms to follow active speaker
+            if (cur - lastAnalysisTime >= 0.35 || lastAnalysisTime === 0) {
+              lastAnalysisTime = cur;
+              detectSpeakerFocusX(video, vw, vh, prevAnalysisData)
+                .then((res) => {
+                  prevAnalysisData = res.frameData;
+                  cameraFollower.setTarget(res.detectedX);
+                })
+                .catch(() => {});
+            }
+            currentEffectiveCropX = cameraFollower.update();
+          }
+        }
+
         if (aspectRatio === '9:16') {
           if (verticalStyle === 'blur-background') {
-            ctx.save();
-            ctx.filter = 'blur(20px) brightness(0.55)';
-            const scale = Math.max(targetW / vw, targetH / vh);
-            const bgW = vw * scale;
-            const bgH = vh * scale;
-            ctx.drawImage(video, (targetW - bgW) / 2, (targetH - bgH) / 2, bgW, bgH);
-            ctx.restore();
+            // High-speed hardware-accelerated smooth background blur:
+            if (blurCtx) {
+              blurCtx.drawImage(video, 0, 0, blurCanvas.width, blurCanvas.height);
+              ctx.imageSmoothingEnabled = true;
+              ctx.imageSmoothingQuality = 'low';
+              ctx.drawImage(blurCanvas, 0, 0, targetW, targetH);
+            }
+            // Semi-transparent dark overlay so foreground pops cleanly
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+            ctx.fillRect(0, 0, targetW, targetH);
 
+            // Centered sharp 16:9 video
             const fitScale = targetW / vw;
             const fgH = vh * fitScale;
-            ctx.drawImage(video, 0, (targetH - fgH) / 2, targetW, fgH);
-          } else if (verticalStyle === 'center-crop') {
+            const fgY = (targetH - fgH) / 2;
+            ctx.drawImage(video, 0, fgY, targetW, fgH);
+          } else if (verticalStyle === 'letterbox') {
+            // Bilah Hitam: Pure deep black background top and bottom
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, targetW, targetH);
+
+            // Centered sharp 16:9 video
+            const fitScale = targetW / vw;
+            const fgH = vh * fitScale;
+            const fgY = (targetH - fgH) / 2;
+            ctx.drawImage(video, 0, fgY, targetW, fgH);
+          } else {
+            // Auto-track: Smooth speaker follower crop
             const cropW = (vh * 9) / 16;
             const maxCropX = Math.max(0, vw - cropW);
-            const ratio = Math.max(0, Math.min(100, cropPositionX)) / 100;
+            const ratio = Math.max(0, Math.min(100, currentEffectiveCropX)) / 100;
             const cropX = maxCropX * ratio;
             ctx.drawImage(video, cropX, 0, cropW, vh, 0, 0, targetW, targetH);
-          } else {
-            ctx.fillStyle = '#09090b';
-            ctx.fillRect(0, 0, targetW, targetH);
-            const fitScale = targetW / vw;
-            const fgH = vh * fitScale;
-            ctx.drawImage(video, 0, (targetH - fgH) / 2, targetW, fgH);
           }
         } else if (aspectRatio === '1:1') {
           const minDim = Math.min(vw, vh);
           const maxCropX = Math.max(0, vw - minDim);
-          const ratio = Math.max(0, Math.min(100, cropPositionX)) / 100;
+          const ratio = Math.max(0, Math.min(100, currentEffectiveCropX)) / 100;
           const cropX = maxCropX * ratio;
           const cropY = (vh - minDim) / 2;
           ctx.drawImage(video, cropX, cropY, minDim, minDim, 0, 0, targetW, targetH);
@@ -877,11 +926,46 @@ export function calculateEstimatedFileSize(durationSeconds: number, quality: Exp
 }
 
 /**
+ * Downloads a genuine MP4 clip rendered server-side via yt-dlp + ffmpeg
+ */
+export async function downloadServerRenderedClip(
+  clip: GeneratedClip,
+  videoUrl: string,
+  youtubeId?: string
+): Promise<{ blob: Blob; url: string }> {
+  const res = await fetch('/api/render-clip', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      url: videoUrl,
+      youtubeId: youtubeId || (clip.sourceId?.startsWith('yt-') ? clip.sourceId.replace('yt-', '') : undefined),
+      startTime: clip.startTime,
+      endTime: clip.endTime,
+      aspectRatio: clip.aspectRatio,
+      verticalStyle: clip.verticalStyle,
+      cropPositionX: clip.cropPositionX ?? 50,
+      quality: clip.exportQuality || '1080p',
+      title: clip.title,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Gagal memproses klip video asli');
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  return { blob, url };
+}
+
+/**
  * Universal helper to trigger download of a generated clip as .mp4
  */
-export function downloadClipAsMp4(clip: GeneratedClip, fallbackSourceUrl?: string): void {
+export function downloadClipAsMp4(clip: GeneratedClip, fallbackSourceUrl?: string, preferredExt?: string): void {
   const safeTitle = clip.title.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
-  const fileName = `driaclip_${clip.exportQuality || '1080p'}_${safeTitle || clip.id}.mp4`;
+  const ext = preferredExt || 'mp4';
+  const fileName = `driaclip_${clip.exportQuality || '1080p'}_${safeTitle || clip.id}.${ext}`;
 
   if (clip.videoBlobUrl) {
     const a = document.createElement('a');

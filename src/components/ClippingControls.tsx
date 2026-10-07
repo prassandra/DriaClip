@@ -59,8 +59,6 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
     ? Math.max(5, config.customDuration || 60)
     : (config.presetDuration || 60);
 
-  const currentCropX = config.cropPositionX ?? 50;
-
   // Calculate live expected clips count if video duration is known
   const safeTotalDuration = videoDuration && videoDuration > 0 ? videoDuration : 0;
   const fullClipsCount = safeTotalDuration > 0 ? Math.floor(safeTotalDuration / currentDurationSec) : 0;
@@ -259,7 +257,7 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
           )}
         </div>
 
-        {/* Module 2: Format Rasio & Tampilan Vertikal & Posisi Potongan Frame */}
+        {/* Module 2: Format Rasio & Tampilan Vertikal */}
         <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-5 sm:p-6 space-y-4">
           <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
             <Smartphone className="h-4 w-4 text-violet-600 dark:text-violet-400" />
@@ -296,84 +294,118 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
 
           {/* Framing treatment if 9:16 is selected */}
           {config.aspectRatio === '9:16' && (
-            <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
-                {t.controls.verticalTreatment}
-              </span>
-              <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                  {t.controls.verticalTreatment}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-950/70 px-2 py-0.5 rounded">
+                  {config.verticalStyle === 'auto-track'
+                    ? (isId ? 'Auto-Follow Kamera (AI)' : 'Auto-Follow Camera')
+                    : config.verticalStyle === 'blur-background'
+                    ? (isId ? 'Latar Blur' : 'Blur Background')
+                    : (isId ? 'Bilah Hitam' : 'Letterbox')}
+                </span>
+              </div>
+
+              {/* 3 Clear Vertical Modes: Auto-Track AI, Latar Blur, Bilah Hitam */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                 {[
-                  { id: 'blur-background' as VerticalStyle, label: isId ? 'Latar Blur' : 'Blur Canvas' },
-                  { id: 'center-crop' as VerticalStyle, label: isId ? 'Potong Frame' : 'Crop Frame' },
-                  { id: 'letterbox' as VerticalStyle, label: isId ? 'Bilah Hitam' : 'Letterbox' },
+                  { 
+                    id: 'auto-track' as VerticalStyle, 
+                    label: isId ? 'Auto Tracking Kamera' : 'Auto-Follow Camera', 
+                    badge: isId ? 'AI Otomatis' : 'AI Auto',
+                    desc: isId ? 'Otomatis melacak orang berbicara tanpa geser manual' : 'Auto tracks active speaker',
+                    highlight: true 
+                  },
+                  { 
+                    id: 'blur-background' as VerticalStyle, 
+                    label: isId ? 'Latar Blur' : 'Blur Background',
+                    badge: isId ? 'Populer' : 'Popular',
+                    desc: isId ? 'Video di tengah dengan background blur atas & bawah' : 'Blurred video backdrop',
+                    highlight: false
+                  },
+                  { 
+                    id: 'letterbox' as VerticalStyle, 
+                    label: isId ? 'Bilah Hitam' : 'Letterbox Bars',
+                    badge: isId ? 'Sinematik' : 'Classic',
+                    desc: isId ? 'Video di tengah dengan bilah hitam atas & bawah' : 'Clean black bars framing',
+                    highlight: false
+                  },
                 ].map((style) => (
                   <button
                     key={style.id}
                     type="button"
                     onClick={() => updateConfig('verticalStyle', style.id)}
-                    className={`py-2 px-2 rounded-xl transition-colors text-center cursor-pointer font-medium leading-tight border ${
+                    className={`p-3 rounded-xl transition-all text-left cursor-pointer font-medium leading-tight border relative flex flex-col justify-between gap-1.5 ${
                       config.verticalStyle === style.id
-                        ? 'bg-violet-600 text-white font-bold border-violet-600 shadow-xs'
-                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-slate-800'
+                        ? 'bg-violet-600 text-white font-bold border-violet-600 shadow-md ring-2 ring-violet-500/20'
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-slate-800 hover:border-violet-300'
                     }`}
                   >
-                    <span className="block font-semibold">{style.label}</span>
+                    <div className="flex items-center justify-between w-full">
+                      <span className="block font-bold text-xs sm:text-[13px]">{style.label}</span>
+                      {style.badge && (
+                        <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+                          config.verticalStyle === style.id
+                            ? 'bg-violet-800 text-violet-100'
+                            : style.highlight
+                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                        }`}>
+                          {style.badge}
+                        </span>
+                      )}
+                    </div>
+                    <span className={`text-[11px] leading-tight ${config.verticalStyle === style.id ? 'text-violet-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                      {style.desc}
+                    </span>
                   </button>
                 ))}
               </div>
-            </div>
-          )}
 
-          {/* Frame Positioning for 9:16 and 1:1 - Only show if original video is 16:9 landscape! */}
-          {isSourceLandscape && (config.aspectRatio === '9:16' || config.aspectRatio === '1:1') && (
-            <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-800">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                  <MoveHorizontal className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-                  <span>{isId ? 'Posisi Potongan Frame Horizontal (16:9 ➔ 9:16)' : 'Horizontal Crop Frame Position'}</span>
-                </label>
-                <span className="text-xs font-mono font-bold text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-950/60 px-2 py-0.5 rounded">
-                  {currentCropX}%
-                </span>
-              </div>
-
-              {/* Visual Framing Guide with Smooth Range Slider */}
-              <div className="space-y-2 bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
-                <div className="relative h-10 w-full bg-slate-800 rounded-lg overflow-hidden border border-slate-700 flex items-center justify-center">
-                  <span className="text-[10px] font-mono text-slate-400 select-none">
-                    Video Horizontal 16:9
-                  </span>
-                  {/* Moving 9:16 crop window preview */}
-                  <div
-                    className="absolute top-0 bottom-0 bg-violet-500/40 border-2 border-violet-400 rounded transition-all flex items-center justify-center shadow-lg"
-                    style={{
-                      width: config.aspectRatio === '9:16' ? '28%' : '56%',
-                      left: `${Math.max(0, Math.min(100 - (config.aspectRatio === '9:16' ? 28 : 56), (currentCropX / 100) * (100 - (config.aspectRatio === '9:16' ? 28 : 56))))}%`,
-                    }}
-                  >
-                    <span className="text-[9px] font-bold text-white drop-shadow font-mono bg-violet-900/80 px-1 rounded">
-                      {config.aspectRatio}
-                    </span>
+              {/* Informative Banner based on Selected Mode */}
+              {config.verticalStyle === 'auto-track' && (
+                <div className="rounded-xl bg-violet-500/10 dark:bg-violet-950/40 border border-violet-500/30 p-3 space-y-1.5 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2 text-violet-800 dark:text-violet-300 font-bold text-xs">
+                    <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                    <span>{isId ? 'Auto-Tracking Kamera AI Aktif' : 'Smart AI Camera Auto-Tracking Active'}</span>
                   </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {isId 
+                      ? 'Kamera otomatis mendeteksi wajah & gerakan orang yang sedang berbicara, lalu menggeser bingkai 9:16 secara dinamis dan halus (Steadicam Panning). Anda tidak perlu lagi menggeser posisi frame secara manual!' 
+                      : 'The 9:16 vertical camera automatically identifies speaker faces and speech motion, smoothly panning in real-time to follow active subjects without any manual adjustments!'}
+                  </p>
                 </div>
+              )}
 
-                <div className="space-y-1 pt-1">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={currentCropX}
-                    onChange={(e) => updateConfig('cropPositionX', Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-violet-600"
-                    title={isId ? 'Geser posisi frame (0% - 100%)' : 'Adjust frame position (0% - 100%)'}
-                  />
-                  <div className="flex justify-between text-[10px] font-mono text-slate-400 px-0.5">
-                    <span>0%</span>
-                    <span>50%</span>
-                    <span>100%</span>
+              {config.verticalStyle === 'blur-background' && (
+                <div className="rounded-xl bg-sky-500/10 dark:bg-sky-950/40 border border-sky-500/30 p-3 space-y-1.5 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2 text-sky-800 dark:text-sky-300 font-bold text-xs">
+                    <Video className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                    <span>{isId ? 'Mode Latar Blur Aktif' : 'Blur Background Mode Active'}</span>
                   </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {isId 
+                      ? 'Seluruh video asli 16:9 tetap utuh di tengah tanpa terpotong sampingnya, dengan latar belakang video yang dibesarkan dan diburamkan secara artistik di bagian atas dan bawah.' 
+                      : 'The full 16:9 video is centered without cropping edges, backed by an enlarged, artistically blurred video layer on the top and bottom.'}
+                  </p>
                 </div>
-              </div>
+              )}
+
+              {config.verticalStyle === 'letterbox' && (
+                <div className="rounded-xl bg-slate-500/10 dark:bg-slate-800/40 border border-slate-500/30 p-3 space-y-1.5 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2 text-slate-800 dark:text-slate-300 font-bold text-xs">
+                    <Monitor className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400 shrink-0" />
+                    <span>{isId ? 'Mode Bilah Hitam (Letterbox) Aktif' : 'Letterbox Black Bars Mode Active'}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {isId 
+                      ? 'Video 16:9 ditampilkan utuh di tengah layar dengan bilah hitam sinematik di bagian atas dan bawah frame 9:16.' 
+                      : 'The 16:9 video is presented fully centered with classic black letterbox bars at the top and bottom of the vertical 9:16 frame.'}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

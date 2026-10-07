@@ -24,16 +24,10 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
   if (!clip) return null;
   const isId = lang === 'id';
 
-  // Only show crop positioning if original video is 16:9 landscape!
-  const isSourceLandscape = source
-    ? (source.width && source.height ? source.width > source.height : !source.url?.includes('shorts'))
-    : true;
-
   const [title, setTitle] = useState(clip.title);
   const [hookText, setHookText] = useState(clip.hookText);
   const [startTime, setStartTime] = useState(clip.startTime);
   const [endTime, setEndTime] = useState(clip.endTime);
-  const [cropPositionX, setCropPositionX] = useState<number>(clip.cropPositionX ?? 50);
 
   const duration = Math.max(1, endTime - startTime);
 
@@ -61,7 +55,6 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
       startTime: Math.round(startTime),
       endTime: Math.round(endTime),
       duration: Math.round(endTime - startTime),
-      cropPositionX: Math.round(cropPositionX),
     });
     onClose();
   };
@@ -186,57 +179,7 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
             <span className="font-semibold text-neutral-200">{duration} {isId ? 'detik' : 'seconds'}</span>
           </div>
 
-          {/* Frame Position for 9:16 or 1:1 - Only show if original video is 16:9 landscape! */}
-          {isSourceLandscape && (clip.aspectRatio === '9:16' || clip.aspectRatio === '1:1') && (
-            <div className="space-y-3 rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
-                  <MoveHorizontal className="h-4 w-4 text-violet-400" />
-                  <span>{isId ? 'Posisi Potongan Frame Horizontal (16:9 ➔ 9:16)' : 'Horizontal Crop Frame Position'}</span>
-                </label>
-                <span className="text-xs font-mono font-bold text-violet-400 bg-violet-950/80 px-2.5 py-0.5 rounded border border-violet-800/60">
-                  {cropPositionX}%
-                </span>
-              </div>
 
-              {/* Visual Framing Guide with Smooth Range Slider */}
-              <div className="space-y-2 bg-neutral-950 p-3 rounded-lg border border-neutral-800">
-                <div className="relative h-10 w-full bg-neutral-900 rounded overflow-hidden border border-neutral-750 flex items-center justify-center">
-                  <span className="text-[10px] font-mono text-neutral-500 select-none">
-                    Video Horizontal 16:9
-                  </span>
-                  <div
-                    className="absolute top-0 bottom-0 bg-violet-500/40 border-2 border-violet-400 rounded transition-all flex items-center justify-center"
-                    style={{
-                      width: clip.aspectRatio === '9:16' ? '28%' : '56%',
-                      left: `${Math.max(0, Math.min(100 - (clip.aspectRatio === '9:16' ? 28 : 56), (cropPositionX / 100) * (100 - (clip.aspectRatio === '9:16' ? 28 : 56))))}%`,
-                    }}
-                  >
-                    <span className="text-[9px] font-bold text-white font-mono bg-violet-950/80 px-1 rounded">
-                      {clip.aspectRatio}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-1 pt-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-neutral-400 font-mono">0%</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="1"
-                      value={cropPositionX}
-                      onChange={(e) => setCropPositionX(Number(e.target.value))}
-                      className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-violet-500"
-                      title={isId ? 'Geser posisi frame (0% - 100%)' : 'Adjust frame position (0% - 100%)'}
-                    />
-                    <span className="text-[10px] text-neutral-400 font-mono">100%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Action Buttons */}
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-neutral-800">

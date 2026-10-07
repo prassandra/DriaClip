@@ -28,7 +28,15 @@ import {
   ProcessingJob 
 } from './types/driaclip';
 import { generateHighlights } from './services/aiHighlights';
-import { captureVideoThumbnail, calculateClipThumbnailTime, downloadClipAsMp4, createDownloadableClipBlob, renderClipBlob } from './services/videoClipper';
+import { 
+  captureVideoThumbnail, 
+  calculateClipThumbnailTime, 
+  downloadClipAsMp4, 
+  createDownloadableClipBlob, 
+  renderClipBlob,
+  downloadServerRenderedClip
+} from './services/videoClipper';
+import { computeClipTrackingTrajectory } from './services/smartTracking';
 import { Language, FontSize, ThemeMode, TRANSLATIONS } from './i18n/translations';
 
 export default function App() {
@@ -63,7 +71,8 @@ export default function App() {
     minDuration: 15,
     maxDuration: 60,
     aspectRatio: '9:16',
-    verticalStyle: 'center-crop',
+    verticalStyle: 'auto-track', // Default to Smart AI Camera Auto-Follow!
+    autoTrackSpeaker: true,
     exportQuality: '1080p',
     addCaptions: true,
     detectSceneChanges: true,
@@ -197,7 +206,26 @@ export default function App() {
         }));
 
         // Logika alur thumbnail: ambil gambar start awal durasi
-        // Misal durasi per klip 15s: klip 1 (00:00) -> detik 00:01. Klip 2 (00:15) -> detik 00:16 dst.
+        // Precompute dynamic tracking path if auto-track mode is active
+        let trackingTrajectory = undefined;
+        let effectiveStartCropX = config.cropPositionX ?? 50;
+
+        if (config.verticalStyle === 'auto-track') {
+          try {
+            trackingTrajectory = await computeClipTrackingTrajectory(
+              currentSource.url,
+              seg.startTime,
+              seg.endTime,
+              0.8
+            );
+            if (trackingTrajectory && trackingTrajectory.length > 0) {
+              effectiveStartCropX = trackingTrajectory[0].cropX;
+            }
+          } catch {
+            // Fallback to center
+          }
+        }
+
         const thumbnailSecond = calculateClipThumbnailTime(seg.startTime, seg.endTime);
 
         const thumbnail = await captureVideoThumbnail(
@@ -210,7 +238,7 @@ export default function App() {
           seg.startTime,
           seg.endTime,
           seg.title,
-          config.cropPositionX ?? 50
+          effectiveStartCropX
         );
 
         const durationSec = Math.max(1, seg.endTime - seg.startTime);
@@ -225,7 +253,9 @@ export default function App() {
           duration: durationSec,
           aspectRatio: config.aspectRatio,
           verticalStyle: config.verticalStyle,
-          cropPositionX: config.cropPositionX ?? 50,
+          cropPositionX: effectiveStartCropX,
+          trackingKeyframes: trackingTrajectory,
+          autoTrackEnabled: config.verticalStyle === 'auto-track',
           exportQuality: config.exportQuality,
           status: 'ready',
           thumbnailBlobUrl: thumbnail,
@@ -402,11 +432,15 @@ export default function App() {
       downloadClipAsMp4(clip);
       return;
     }
-    if (currentSource?.youtubeId) {
-      const res = await createDownloadableClipBlob(clip, currentSource.thumbnailUrl);
-      clip.videoBlobUrl = res.url;
-      downloadClipAsMp4(clip);
-      return;
+    if (currentSource?.youtubeId || (currentSource?.url && !currentSource.url.startsWith('blob:'))) {
+      try {
+        const res = await downloadServerRenderedClip(clip, currentSource.url, currentSource.youtubeId);
+        clip.videoBlobUrl = res.url;
+        downloadClipAsMp4(clip, undefined, 'mp4');
+        return;
+      } catch (err) {
+        console.warn('Server render notice:', err);
+      }
     }
     if (currentSource?.url) {
       try {
@@ -418,10 +452,11 @@ export default function App() {
           clip.verticalStyle,
           clip.exportQuality || '720p',
           undefined,
-          clip.cropPositionX ?? 50
+          clip.cropPositionX ?? 50,
+          clip.trackingKeyframes
         );
         clip.videoBlobUrl = res.url;
-        downloadClipAsMp4(clip);
+        downloadClipAsMp4(clip, undefined, res.extension);
       } catch {
         downloadClipAsMp4(clip, currentSource.url);
       }
