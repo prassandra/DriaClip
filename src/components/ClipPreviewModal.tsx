@@ -251,8 +251,8 @@ export const ClipPreviewModal: React.FC<ClipPreviewModalProps> = ({
               {clip.verticalStyle === 'auto-track' && (
                 <div className="absolute top-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
                   <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/85 border border-emerald-500/50 text-emerald-300 text-[10px] font-mono backdrop-blur-md shadow-lg">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                    <span>Auto-Follow AI &bull; {Math.round(activeCropX)}%</span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                    <span>{isId ? 'Fokus Pembicara (AI)' : 'Speaker Focus (AI)'} &bull; {Math.round(activeCropX)}%</span>
                   </div>
                 </div>
               )}

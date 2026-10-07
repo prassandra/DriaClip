@@ -592,6 +592,11 @@ export async function renderClipBlob(
   trackingKeyframes?: TrackingKeyframe[]
 ): Promise<{ blob: Blob; url: string; size: number; extension: 'mp4' | 'webm' }> {
   return new Promise(async (resolve, reject) => {
+    if (!videoUrl || videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+      reject(new Error('Format video tidak didukung untuk pemotongan langsung di peramban.'));
+      return;
+    }
+
     const targetDuration = Math.max(0.5, endTime - startTime);
 
     // Create off-screen video element attached to DOM with active compositing dimensions
@@ -654,7 +659,10 @@ export async function renderClipBlob(
       await new Promise<void>((res, rej) => {
         if (video.readyState >= 1) return res();
         video.onloadedmetadata = () => res();
-        video.onerror = () => rej(new Error('Gagal memuat sumber video'));
+        video.onerror = () => {
+          if (video.parentNode) video.parentNode.removeChild(video);
+          rej(new Error('Gagal memuat sumber video'));
+        };
         setTimeout(res, 3000);
       });
 
@@ -799,7 +807,7 @@ export async function renderClipBlob(
               detectSpeakerFocusX(video, vw, vh, prevAnalysisData)
                 .then((res) => {
                   prevAnalysisData = res.frameData;
-                  cameraFollower.setTarget(res.detectedX);
+                  cameraFollower.setTarget(res.targetCropX, res.isSceneCut);
                 })
                 .catch(() => {});
             }
@@ -944,6 +952,7 @@ export async function downloadServerRenderedClip(
       aspectRatio: clip.aspectRatio,
       verticalStyle: clip.verticalStyle,
       cropPositionX: clip.cropPositionX ?? 50,
+      trackingKeyframes: clip.trackingKeyframes,
       quality: clip.exportQuality || '1080p',
       title: clip.title,
     }),

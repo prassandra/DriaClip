@@ -1,26 +1,14 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig, Plugin } from 'vite';
-import { renderClipMiddleware } from './src/server/clipRenderer';
-
-function clipRendererPlugin(): Plugin {
-  return {
-    name: 'clip-renderer-api',
-    configureServer(server) {
-      server.middlewares.use('/api/render-clip', (req, res) => {
-        renderClipMiddleware(req, res);
-      });
-    },
-  };
-}
+import { defineConfig } from 'vite';
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss(), clipRendererPlugin()],
+    plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     server: {

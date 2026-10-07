@@ -313,9 +313,9 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
                 {[
                   { 
                     id: 'auto-track' as VerticalStyle, 
-                    label: isId ? 'Auto Tracking Kamera' : 'Auto-Follow Camera', 
-                    badge: isId ? 'AI Otomatis' : 'AI Auto',
-                    desc: isId ? 'Otomatis melacak orang berbicara tanpa geser manual' : 'Auto tracks active speaker',
+                    label: isId ? 'Fokus Pembicara (AI)' : 'Speaker Focus (AI)', 
+                    badge: isId ? 'Stabil' : 'Steady',
+                    desc: isId ? 'Kamera fokus mengunci orang yang berbicara secara stabil tanpa gerak patah-patah' : 'Locks camera steadily on active speaker without jitter',
                     highlight: true 
                   },
                   { 
@@ -369,12 +369,12 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
                 <div className="rounded-xl bg-violet-500/10 dark:bg-violet-950/40 border border-violet-500/30 p-3 space-y-1.5 animate-in fade-in duration-200">
                   <div className="flex items-center gap-2 text-violet-800 dark:text-violet-300 font-bold text-xs">
                     <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                    <span>{isId ? 'Auto-Tracking Kamera AI Aktif' : 'Smart AI Camera Auto-Tracking Active'}</span>
+                    <span>{isId ? 'Mode Fokus Pembicara Aktif (Kamera Stabil)' : 'Smart Speaker Focus Active (Steady Camera)'}</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
                     {isId 
-                      ? 'Kamera otomatis mendeteksi wajah & gerakan orang yang sedang berbicara, lalu menggeser bingkai 9:16 secara dinamis dan halus (Steadicam Panning). Anda tidak perlu lagi menggeser posisi frame secara manual!' 
-                      : 'The 9:16 vertical camera automatically identifies speaker faces and speech motion, smoothly panning in real-time to follow active subjects without any manual adjustments!'}
+                      ? 'Kamera otomatis mendeteksi orang yang sedang berbicara dan mengunci bingkai 9:16 secara tenang dan stabil (tidak terus bergerak / tidak patah-patah). Jika ada pergantian pembicara, kamera berpindah secara rapi.' 
+                      : 'The camera detects the active speaker and holds the 9:16 framing rock-solid and steady without constant jitter or lag. When speakers alternate, it transitions cleanly.'}
                   </p>
                 </div>
               )}

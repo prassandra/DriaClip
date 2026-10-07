@@ -179,6 +179,26 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
             <span className="font-semibold text-neutral-200">{duration} {isId ? 'detik' : 'seconds'}</span>
           </div>
 
+          {/* AI Auto-Follow & Face Detector Status */}
+          {clip.verticalStyle === 'auto-track' && (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-3.5 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>{isId ? 'AI Auto-Follow & Face Detector Aktif' : 'AI Auto-Follow & Face Detector Active'}</span>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-600/50">
+                  {isId ? 'Otomatis' : 'Automatic'}
+                </span>
+              </div>
+              <p className="text-[11px] text-neutral-300 leading-relaxed">
+                {isId
+                  ? 'Kamera 9:16 otomatis mendeteksi wajah dan mengarahkan fokus ke orang yang sedang aktif berbicara sepanjang durasi klip tanpa perlu menggeser frame secara manual.'
+                  : 'The 9:16 camera automatically tracks faces and locks onto the active speaker throughout the clip without manual adjustments.'}
+              </p>
+            </div>
+          )}
+
 
 
           {/* Action Buttons */}

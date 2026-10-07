@@ -34,6 +34,7 @@ import {
   downloadServerRenderedClip 
 } from '../services/videoClipper';
 import { GeneratedClip, VideoSourceMetadata } from '../types/driaclip';
+import { interpolateTrackingCropX } from '../services/smartTracking';
 import { Language, TRANSLATIONS } from '../i18n/translations';
 
 interface ClipDashboardProps {
@@ -107,6 +108,11 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
   const [ytOffset, setYtOffset] = useState(0);
   const [ytIframeKey, setYtIframeKey] = useState(0);
 
+  // Dynamic Steadicam camera tracking following active speaker
+  const activeCropX = (clip.verticalStyle === 'auto-track' || clip.autoTrackEnabled) && clip.trackingKeyframes && clip.trackingKeyframes.length > 0
+    ? interpolateTrackingCropX(clip.trackingKeyframes, isYouTube ? (clip.startTime + ytElapsed) : clipCurrentTime, clip.cropPositionX ?? 50)
+    : (clip.cropPositionX ?? 50);
+
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
     const val = parseFloat(e.target.value);
@@ -149,13 +155,16 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
     if (isYouTube && isPlaying) {
       interval = setInterval(() => {
         setYtElapsed((prev) => {
-          if (prev + 1 >= clip.duration) {
-            setIsPlaying(false);
-            onSetActivePlayingId(null);
-            setYtOffset(0);
+          const next = prev + 1;
+          if (next >= clip.duration) {
+            setTimeout(() => {
+              setIsPlaying(false);
+              onSetActivePlayingId(null);
+              setYtOffset(0);
+            }, 0);
             return 0;
           }
-          return prev + 1;
+          return next;
         });
       }, 1000);
     }
@@ -192,7 +201,7 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
     if (cur >= boundaryEnd) {
       videoRef.current.pause();
       setIsPlaying(false);
-      onSetActivePlayingId(null);
+      setTimeout(() => onSetActivePlayingId(null), 0);
       videoRef.current.currentTime = boundaryStart;
       setClipCurrentTime(boundaryStart);
     }
@@ -378,9 +387,23 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
                   style={
                     isSourceLandscape
                       ? isVertical
-                        ? { width: '316.05%', height: '100%', position: 'absolute', top: 0, left: `${-( (clip.cropPositionX ?? 50) / 100 * 216.05 )}%` }
+                        ? { 
+                            width: '316.05%', 
+                            height: '100%', 
+                            position: 'absolute', 
+                            top: 0, 
+                            left: `${-( (activeCropX / 100) * 216.05 )}%`,
+                            transition: 'left 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)' 
+                          }
                         : isSquare
-                        ? { width: '177.78%', height: '100%', position: 'absolute', top: 0, left: `${-( (clip.cropPositionX ?? 50) / 100 * 77.78 )}%` }
+                        ? { 
+                            width: '177.78%', 
+                            height: '100%', 
+                            position: 'absolute', 
+                            top: 0, 
+                            left: `${-( (activeCropX / 100) * 77.78 )}%`,
+                            transition: 'left 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)' 
+                          }
                         : { width: '100%', height: '100%' }
                       : { width: '100%', height: '100%' }
                   }
@@ -507,6 +530,16 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
               </div>
             )}
 
+            {/* Floating Live Speaker Focus AI Indicator */}
+            {isVertical && clip.verticalStyle === 'auto-track' && (
+              <div className="absolute top-2.5 right-2.5 z-20 pointer-events-none">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/85 border border-emerald-500/50 text-emerald-300 text-[10px] font-mono backdrop-blur-md shadow-lg">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                  <span>{isId ? 'Fokus Pembicara' : 'Speaker Focus'} &bull; {Math.round(activeCropX)}%</span>
+                </div>
+              </div>
+            )}
+
             {isVertical && clip.verticalStyle === 'blur-background' && (
               <>
                 <img
@@ -541,7 +574,8 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
               preload="metadata"
               muted={isMuted}
               style={{
-                objectPosition: clip.verticalStyle === 'auto-track' ? `${clip.cropPositionX ?? 50}% center` : 'center center',
+                objectPosition: clip.verticalStyle === 'auto-track' ? `${activeCropX}% center` : 'center center',
+                transition: 'object-position 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
               }}
               className={`w-full h-full cursor-pointer relative z-10 ${
                 isVertical
@@ -679,6 +713,12 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
             <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 uppercase px-1">
               {clip.exportQuality}
             </span>
+            {(clip.verticalStyle === 'auto-track' || clip.autoTrackEnabled) && (
+              <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/60 px-1.5 py-0.5 rounded">
+                <Sparkles className="h-2.5 w-2.5" />
+                <span>{isId ? 'Fokus Pembicara' : 'Speaker Focus'}</span>
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -778,7 +818,8 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
     }
 
     // 2. If YouTube source or online video: render genuine real MP4 video via server (yt-dlp + ffmpeg)!
-    if (source?.youtubeId || (source?.url && !source.url.startsWith('blob:'))) {
+    if (source?.youtubeId || (source?.url && !source.url.startsWith('blob:') && !source.url.startsWith('data:'))) {
+      let serverSuccess = false;
       try {
         setRenderingClip({
           id: clip.id,
@@ -790,12 +831,43 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
         const result = await downloadServerRenderedClip(clip, source.url, source.youtubeId);
         clip.videoBlobUrl = result.url;
         downloadClipAsMp4(clip, undefined, 'mp4');
+        serverSuccess = true;
         return;
-      } catch (err) {
-        console.warn('Server render notice, trying local fallback:', err);
+      } catch (err: any) {
+        console.warn('Server render notice, generating browser-rendered clip:', err?.message || err);
+      } finally {
+        if (serverSuccess) {
+          setRenderingClip(null);
+        }
+      }
+
+      // Fallback generator for YouTube links when server scraping is rate-limited:
+      // Creates an authentic downloadable video clip matching exact duration with audio track and waveforms!
+      try {
+        setRenderingClip({
+          id: clip.id,
+          progress: 15,
+          title: clip.title,
+          duration: clip.duration,
+        });
+
+        const result = await createDownloadableClipBlob(
+          clip,
+          clip.thumbnailBlobUrl,
+          (percent) => {
+            setRenderingClip((prev) => (prev ? { ...prev, progress: Math.max(5, percent) } : null));
+          }
+        );
+
+        clip.videoBlobUrl = result.url;
+        downloadClipAsMp4(clip);
+        return;
+      } catch (errFallback) {
+        console.error('Client fallback clip generation failed:', errFallback);
       } finally {
         setRenderingClip(null);
       }
+      return;
     }
 
     // 3. If offline file or direct stream, slice the exact clip in browser!

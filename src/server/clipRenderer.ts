@@ -1,9 +1,15 @@
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { execFile } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
 import type { IncomingMessage, ServerResponse } from 'http';
+import { 
+  analyzePixelBuffer, 
+  SmoothCameraFollower, 
+  buildFfmpegCropExpression, 
+  TrackingKeyframe 
+} from '../services/smartTracking.ts';
 
 const execFileAsync = promisify(execFile);
 
@@ -28,12 +34,93 @@ export interface RenderClipRequest {
   aspectRatio?: '16:9' | '9:16' | '1:1';
   verticalStyle?: 'auto-track' | 'blur-background' | 'letterbox';
   cropPositionX?: number;
+  trackingKeyframes?: TrackingKeyframe[];
   quality?: '1080p' | '720p' | '480p' | '360p';
   title?: string;
 }
 
 /**
+ * Server-side High Speed Video Frame Analyzer.
+ * Extracts 1 sample frame per second directly via ffmpeg stdout pipe (zero disk IO),
+ * runs the multi-face & active-speaker detection engine, and produces smooth tracking keyframes.
+ */
+async function analyzeVideoFileForTracking(
+  videoFilePath: string,
+  targetW: number = 720
+): Promise<string> {
+  return new Promise((resolve) => {
+    const frameW = 160;
+    const frameH = 90;
+    const bytesPerFrame = frameW * frameH * 3; // RGB24 stride 3
+
+    const ffmpegProc = spawn('/usr/bin/ffmpeg', [
+      '-i',
+      videoFilePath,
+      '-vf',
+      `fps=1.2,scale=${frameW}:${frameH}`,
+      '-f',
+      'rawvideo',
+      '-pix_fmt',
+      'rgb24',
+      '-',
+    ]);
+
+    const chunks: Buffer[] = [];
+    ffmpegProc.stdout.on('data', (d) => chunks.push(d));
+
+    ffmpegProc.on('error', () => {
+      resolve(`(in_w-${targetW})*0.5`);
+    });
+
+    ffmpegProc.on('close', () => {
+      try {
+        const fullBuffer = Buffer.concat(chunks);
+        const totalFrames = Math.floor(fullBuffer.length / bytesPerFrame);
+
+        if (totalFrames <= 0) {
+          resolve(`(in_w-${targetW})*0.5`);
+          return;
+        }
+
+        const follower = new SmoothCameraFollower(50, 0.1, 1.8);
+        const keyframes: TrackingKeyframe[] = [];
+        let prevFrame: Uint8Array | null = null;
+
+        for (let i = 0; i < totalFrames; i++) {
+          const offset = i * bytesPerFrame;
+          const frameBytes = fullBuffer.subarray(offset, offset + bytesPerFrame);
+          const timeSec = Math.round((i / 1.2) * 10) / 10;
+
+          const analysis = analyzePixelBuffer(frameBytes, frameW, frameH, prevFrame, 3);
+          prevFrame = frameBytes;
+
+          const smoothCropX = follower.update(analysis.targetCropX, analysis.isSceneCut);
+          keyframes.push({
+            time: timeSec,
+            cropX: smoothCropX,
+          });
+        }
+
+        const expr = buildFfmpegCropExpression(keyframes, 0, targetW);
+        resolve(expr);
+      } catch {
+        resolve(`(in_w-${targetW})*0.5`);
+      }
+    });
+
+    // Safety timeout after 5 seconds
+    setTimeout(() => {
+      try {
+        ffmpegProc.kill();
+      } catch {}
+      resolve(`(in_w-${targetW})*0.5`);
+    }, 5500);
+  });
+}
+
+/**
  * Core handler to download & render clip into an authentic MP4 using yt-dlp and ffmpeg
+ * with dynamic AI camera follow / active speaker tracking.
  */
 export async function handleRenderClip(body: RenderClipRequest): Promise<{ filePath: string; fileName: string; cleanup: () => void }> {
   const {
@@ -44,6 +131,7 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
     aspectRatio = '9:16',
     verticalStyle = 'auto-track',
     cropPositionX = 50,
+    trackingKeyframes,
     quality = '720p',
     title = 'clip',
   } = body;
@@ -73,6 +161,15 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
     const ytDlpArgs = [
       '--js-runtimes',
       'node:/usr/local/bin/node',
+      '--no-check-certificates',
+    ];
+
+    const cookiesPath = path.resolve(process.cwd(), 'cookies.txt');
+    if (fs.existsSync(cookiesPath)) {
+      ytDlpArgs.push('--cookies', cookiesPath);
+    }
+
+    ytDlpArgs.push(
       '--download-sections',
       `*${safeStart}-${safeEnd}`,
       '--force-keyframes-at-cuts',
@@ -80,10 +177,18 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
       '18/b[ext=mp4]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best',
       targetUrl,
       '-o',
-      rawClipPath,
-    ];
+      rawClipPath
+    );
 
-    await execFileAsync(YT_DLP_PATH, ytDlpArgs, { timeout: 60000 });
+    try {
+      await execFileAsync(YT_DLP_PATH, ytDlpArgs, { timeout: 60000 });
+    } catch (ytErr: any) {
+      const errOut = ytErr?.stderr || ytErr?.stdout || ytErr?.message || '';
+      if (errOut.includes('Sign in to confirm you’re not a bot') || errOut.includes('bot')) {
+        throw new Error('YOUTUBE_BOT_PROTECTION: YouTube mendeteksi bot scraping pada IP server. Generator dialihkan ke peramban.');
+      }
+      throw new Error(`Gagal mengunduh bagian klip dari sumber YouTube: ${ytErr?.message || 'yt-dlp error'}`);
+    }
 
     if (!fs.existsSync(rawClipPath)) {
       throw new Error('Gagal mengunduh bagian klip dari sumber YouTube/video.');
@@ -110,7 +215,7 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
 
     if (aspectRatio === '9:16') {
       if (verticalStyle === 'blur-background') {
-        // Crisp 16:9 centered, blurred video filling the 9:16 frame top & bottom
+        // Crisp centered 16:9, blurred video backdrop filling top and bottom
         ffmpegArgs.push(
           '-filter_complex',
           `[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH},boxblur=20:5[bg];[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2`,
@@ -125,7 +230,7 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
           finalClipPath
         );
       } else if (verticalStyle === 'letterbox') {
-        // Crisp 16:9 centered with solid black letterbox bars top & bottom
+        // Crisp 16:9 centered with pure black letterbox bars top & bottom
         ffmpegArgs.push(
           '-vf',
           `scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2:black`,
@@ -140,11 +245,20 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
           finalClipPath
         );
       } else {
-        // auto-track: crop 9:16 slice centered or tracking focal point
-        const ratio = Math.max(0, Math.min(100, Number(cropPositionX) || 50)) / 100;
+        // Dynamic AI Steadicam Auto-Tracking Camera Follow
+        let cropExpression: string;
+
+        if (trackingKeyframes && trackingKeyframes.length > 0) {
+          // Use client precomputed keyframes
+          cropExpression = buildFfmpegCropExpression(trackingKeyframes, safeStart, targetW);
+        } else {
+          // Run server-side frame analysis directly on the downloaded video clip
+          cropExpression = await analyzeVideoFileForTracking(rawClipPath, targetW);
+        }
+
         ffmpegArgs.push(
           '-vf',
-          `scale=-1:${targetH},crop=${targetW}:${targetH}:(in_w-${targetW})*${ratio}:0`,
+          `scale=-1:${targetH},crop=${targetW}:${targetH}:'${cropExpression}':0`,
           '-c:v',
           'libx264',
           '-preset',
@@ -189,7 +303,7 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
       );
     }
 
-    await execFileAsync('/usr/bin/ffmpeg', ffmpegArgs, { timeout: 45000 });
+    await execFileAsync('/usr/bin/ffmpeg', ffmpegArgs, { timeout: 60000 });
 
     const outputPath = fs.existsSync(finalClipPath) ? finalClipPath : rawClipPath;
     const fileName = `driaclip_${quality}_${safeTitle}.mp4`;

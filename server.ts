@@ -1,6 +1,8 @@
 import express from 'express';
+import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
-import { handleRenderClip } from './src/server/clipRenderer';
+import { handleRenderClip } from './src/server/clipRenderer.ts';
 
 const app = express();
 const PORT = 3000;
@@ -27,12 +29,22 @@ app.post('/api/render-clip', async (req, res) => {
   }
 });
 
-// Mount Vite middleware in development
-const vite = await createViteServer({
-  server: { middlewareMode: true, hmr: process.env.DISABLE_HMR !== 'true' },
-  appType: 'spa',
-});
-app.use(vite.middlewares);
+const isProd = process.env.NODE_ENV === 'production';
+const distPath = path.resolve(process.cwd(), 'dist');
+
+if (isProd && fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+} else {
+  // Mount Vite middleware in development
+  const vite = await createViteServer({
+    server: { middlewareMode: true, hmr: process.env.DISABLE_HMR !== 'true' },
+    appType: 'spa',
+  });
+  app.use(vite.middlewares);
+}
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`DriaClip Full-Stack Engine running on http://0.0.0.0:${PORT}`);

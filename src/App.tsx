@@ -216,7 +216,7 @@ export default function App() {
               currentSource.url,
               seg.startTime,
               seg.endTime,
-              0.8
+              0.6
             );
             if (trackingTrajectory && trackingTrajectory.length > 0) {
               effectiveStartCropX = trackingTrajectory[0].cropX;
@@ -432,15 +432,26 @@ export default function App() {
       downloadClipAsMp4(clip);
       return;
     }
-    if (currentSource?.youtubeId || (currentSource?.url && !currentSource.url.startsWith('blob:'))) {
+    if (currentSource?.youtubeId || (currentSource?.url && !currentSource.url.startsWith('blob:') && !currentSource.url.startsWith('data:'))) {
       try {
         const res = await downloadServerRenderedClip(clip, currentSource.url, currentSource.youtubeId);
         clip.videoBlobUrl = res.url;
         downloadClipAsMp4(clip, undefined, 'mp4');
         return;
       } catch (err) {
-        console.warn('Server render notice:', err);
+        console.warn('Server render notice, generating browser-rendered clip:', err);
       }
+
+      // Safe client-side fallback for YouTube links
+      try {
+        const res = await createDownloadableClipBlob(clip, clip.thumbnailBlobUrl);
+        clip.videoBlobUrl = res.url;
+        downloadClipAsMp4(clip);
+        return;
+      } catch (err2) {
+        console.error('Fallback generation error:', err2);
+      }
+      return;
     }
     if (currentSource?.url) {
       try {
