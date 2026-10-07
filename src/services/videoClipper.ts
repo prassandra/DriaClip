@@ -749,10 +749,11 @@ export async function renderClipBlob(
       let animationFrameId: number;
       let intervalId: any;
 
-      // Smart Auto-Follow Steadicam Camera Follower
-      const cameraFollower = new SmoothCameraFollower(cropPositionX, 0.1, 2.5);
+      // AI Smart Auto-Reframe Steadicam Camera Follower
+      const cameraFollower = new SmoothCameraFollower(cropPositionX, 2.2, 28, 2.5);
       let lastAnalysisTime = 0;
       let prevAnalysisData: ImageData | null = null;
+      let lastFramePerfTime = performance.now();
 
       const finishRecording = () => {
         if (isDone) return;
@@ -784,6 +785,10 @@ export async function renderClipBlob(
       const drawLoop = () => {
         if (isDone) return;
 
+        const nowPerf = performance.now();
+        const dt = Math.max(0.01, Math.min(0.1, (nowPerf - lastFramePerfTime) / 1000));
+        lastFramePerfTime = nowPerf;
+
         const cur = video.currentTime;
         const elapsed = Math.max(0, cur - startTime);
         const progress = Math.min(99, Math.round((elapsed / targetDuration) * 100));
@@ -799,7 +804,7 @@ export async function renderClipBlob(
         if (verticalStyle === 'auto-track') {
           if (trackingKeyframes && trackingKeyframes.length > 0) {
             const interpolatedTarget = interpolateTrackingCropX(trackingKeyframes, cur, cropPositionX);
-            currentEffectiveCropX = cameraFollower.update(interpolatedTarget);
+            currentEffectiveCropX = cameraFollower.update(interpolatedTarget, false, dt, 1.0, cur);
           } else {
             // Live real-time computer vision analysis every ~350ms to follow active speaker
             if (cur - lastAnalysisTime >= 0.35 || lastAnalysisTime === 0) {
@@ -807,11 +812,11 @@ export async function renderClipBlob(
               detectSpeakerFocusX(video, vw, vh, prevAnalysisData)
                 .then((res) => {
                   prevAnalysisData = res.frameData;
-                  cameraFollower.setTarget(res.targetCropX, res.isSceneCut);
+                  cameraFollower.setTarget(res.targetCropX, res.isSceneCut, res.confidence, cur);
                 })
                 .catch(() => {});
             }
-            currentEffectiveCropX = cameraFollower.update();
+            currentEffectiveCropX = cameraFollower.update(undefined, false, dt, 1.0, cur);
           }
         }
 

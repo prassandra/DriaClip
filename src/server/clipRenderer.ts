@@ -57,7 +57,7 @@ async function analyzeVideoFileForTracking(
       '-i',
       videoFilePath,
       '-vf',
-      `fps=1.2,scale=${frameW}:${frameH}`,
+      `fps=2.0,scale=${frameW}:${frameH}`,
       '-f',
       'rawvideo',
       '-pix_fmt',
@@ -82,22 +82,30 @@ async function analyzeVideoFileForTracking(
           return;
         }
 
-        const follower = new SmoothCameraFollower(50, 0.1, 1.8);
+        const follower = new SmoothCameraFollower(50, 2.2, 28, 2.5);
         const keyframes: TrackingKeyframe[] = [];
         let prevFrame: Uint8Array | null = null;
+        const dt = 0.5; // at fps=2.0, frame step is 0.5s
 
         for (let i = 0; i < totalFrames; i++) {
           const offset = i * bytesPerFrame;
           const frameBytes = fullBuffer.subarray(offset, offset + bytesPerFrame);
-          const timeSec = Math.round((i / 1.2) * 10) / 10;
+          const timeSec = Math.round((i / 2.0) * 10) / 10;
 
           const analysis = analyzePixelBuffer(frameBytes, frameW, frameH, prevFrame, 3);
           prevFrame = frameBytes;
 
-          const smoothCropX = follower.update(analysis.targetCropX, analysis.isSceneCut);
+          const smoothCropX = follower.update(
+            analysis.targetCropX,
+            analysis.isSceneCut,
+            dt,
+            analysis.confidence,
+            timeSec
+          );
+
           keyframes.push({
             time: timeSec,
-            cropX: smoothCropX,
+            cropX: Math.round(smoothCropX),
           });
         }
 
