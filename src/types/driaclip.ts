@@ -2,7 +2,7 @@ export type VideoFormat = 'mp4' | 'webm' | 'mov';
 
 export type AspectRatio = '16:9' | '9:16' | '1:1';
 
-export type VerticalStyle = 'auto-track' | 'blur-background' | 'letterbox';
+export type VerticalStyle = 'center-crop' | 'blur-background' | 'letterbox' | 'auto-track';
 
 export interface TrackingKeyframe {
   time: number; // in seconds
@@ -43,6 +43,7 @@ export interface ClipConfig {
   processingMode?: ProcessingMode;
   aspectRatio: AspectRatio;
   verticalStyle: VerticalStyle;
+  zoomOutPercent?: number; // 0 to 50% zoom-out (default 20%)
   exportQuality: ExportQuality;
   addCaptions: boolean;
   detectSceneChanges: boolean;
@@ -62,11 +63,13 @@ export interface GeneratedClip {
   aspectRatio: AspectRatio;
   verticalStyle: VerticalStyle;
   cropPositionX?: number; // 0 to 100 (0 = Left, 50 = Center, 100 = Right)
+  zoomOutPercent?: number; // e.g. 20%
   trackingKeyframes?: TrackingKeyframe[]; // Dynamic camera path following the speaker
   autoTrackEnabled?: boolean;
   exportQuality: ExportQuality;
   status: 'ready' | 'processing' | 'failed';
   videoBlobUrl?: string;
+  videoExtension?: 'mp4' | 'webm';
   thumbnailBlobUrl?: string;
   fileSizeBytes?: number;
   estimatedSizeBytes?: number;

@@ -34,9 +34,9 @@ import {
   downloadClipAsMp4, 
   createDownloadableClipBlob, 
   renderClipBlob,
-  downloadServerRenderedClip
+  downloadServerRenderedClip,
+  downloadServerRenderedLocalClip
 } from './services/videoClipper';
-import { computeClipTrackingTrajectory } from './services/smartTracking';
 import { Language, FontSize, ThemeMode, TRANSLATIONS } from './i18n/translations';
 
 export default function App() {
@@ -63,7 +63,7 @@ export default function App() {
   // Video Source (Starts null; user uploads or pastes a link - no sample library!)
   const [currentSource, setCurrentSource] = useState<VideoSourceMetadata | null>(null);
 
-  // Clipping Engine Configuration
+  // Clipping Engine Configuration: Default to Clean Zoomed-Out Center Crop (Without AI Camera Follow)
   const [config, setConfig] = useState<ClipConfig>({
     durationMode: 'preset',
     presetDuration: 60,
@@ -71,8 +71,10 @@ export default function App() {
     minDuration: 15,
     maxDuration: 60,
     aspectRatio: '9:16',
-    verticalStyle: 'auto-track', // Default to Smart AI Camera Auto-Follow!
-    autoTrackSpeaker: true,
+    verticalStyle: 'center-crop', // Default: Crop Tengah (Zoom-Out)
+    cropPositionX: 50, // Fixed in exact center (50%)
+    zoomOutPercent: 20, // 20% comfortable zoom-out (no tight fit, no stretch)
+    autoTrackSpeaker: false,
     exportQuality: '1080p',
     addCaptions: true,
     detectSceneChanges: true,
@@ -206,25 +208,8 @@ export default function App() {
         }));
 
         // Logika alur thumbnail: ambil gambar start awal durasi
-        // Precompute dynamic tracking path if auto-track mode is active
-        let trackingTrajectory = undefined;
-        let effectiveStartCropX = config.cropPositionX ?? 50;
-
-        if (config.verticalStyle === 'auto-track') {
-          try {
-            trackingTrajectory = await computeClipTrackingTrajectory(
-              currentSource.url,
-              seg.startTime,
-              seg.endTime,
-              0.6
-            );
-            if (trackingTrajectory && trackingTrajectory.length > 0) {
-              effectiveStartCropX = trackingTrajectory[0].cropX;
-            }
-          } catch {
-            // Fallback to center
-          }
-        }
+        // Clean center-crop locked at 50% (middle frame) with comfortable zoom-out
+        const effectiveStartCropX = 50;
 
         const thumbnailSecond = calculateClipThumbnailTime(seg.startTime, seg.endTime);
 
@@ -238,7 +223,8 @@ export default function App() {
           seg.startTime,
           seg.endTime,
           seg.title,
-          effectiveStartCropX
+          effectiveStartCropX,
+          config.zoomOutPercent ?? 20
         );
 
         const durationSec = Math.max(1, seg.endTime - seg.startTime);
@@ -253,9 +239,10 @@ export default function App() {
           duration: durationSec,
           aspectRatio: config.aspectRatio,
           verticalStyle: config.verticalStyle,
-          cropPositionX: effectiveStartCropX,
-          trackingKeyframes: trackingTrajectory,
-          autoTrackEnabled: config.verticalStyle === 'auto-track',
+          cropPositionX: 50,
+          zoomOutPercent: config.zoomOutPercent ?? 20,
+          trackingKeyframes: undefined,
+          autoTrackEnabled: false,
           exportQuality: config.exportQuality,
           status: 'ready',
           thumbnailBlobUrl: thumbnail,
@@ -429,13 +416,14 @@ export default function App() {
 
   const handleDownloadClip = async (clip: GeneratedClip) => {
     if (clip.videoBlobUrl) {
-      downloadClipAsMp4(clip);
+      downloadClipAsMp4(clip, undefined, clip.videoExtension);
       return;
     }
     if (currentSource?.youtubeId || (currentSource?.url && !currentSource.url.startsWith('blob:') && !currentSource.url.startsWith('data:'))) {
       try {
         const res = await downloadServerRenderedClip(clip, currentSource.url, currentSource.youtubeId);
         clip.videoBlobUrl = res.url;
+        clip.videoExtension = 'mp4';
         downloadClipAsMp4(clip, undefined, 'mp4');
         return;
       } catch (err) {
@@ -446,7 +434,8 @@ export default function App() {
       try {
         const res = await createDownloadableClipBlob(clip, clip.thumbnailBlobUrl);
         clip.videoBlobUrl = res.url;
-        downloadClipAsMp4(clip);
+        clip.videoExtension = res.extension;
+        downloadClipAsMp4(clip, undefined, res.extension);
         return;
       } catch (err2) {
         console.error('Fallback generation error:', err2);
@@ -454,6 +443,19 @@ export default function App() {
       return;
     }
     if (currentSource?.url) {
+      // Try server rendering for authentic MP4 with ffmpeg first
+      try {
+        const blobRes = await fetch(currentSource.url);
+        const localBlob = await blobRes.blob();
+        const serverLocalResult = await downloadServerRenderedLocalClip(clip, localBlob);
+        clip.videoBlobUrl = serverLocalResult.url;
+        clip.videoExtension = 'mp4';
+        downloadClipAsMp4(clip, undefined, 'mp4');
+        return;
+      } catch (serverLocalErr) {
+        console.warn('Server local render notice, falling back to browser canvas slice:', serverLocalErr);
+      }
+
       try {
         const res = await renderClipBlob(
           currentSource.url,
@@ -464,12 +466,22 @@ export default function App() {
           clip.exportQuality || '720p',
           undefined,
           clip.cropPositionX ?? 50,
-          clip.trackingKeyframes
+          clip.trackingKeyframes,
+          clip.zoomOutPercent ?? 20
         );
         clip.videoBlobUrl = res.url;
+        clip.videoExtension = res.extension;
         downloadClipAsMp4(clip, undefined, res.extension);
-      } catch {
-        downloadClipAsMp4(clip, currentSource.url);
+      } catch (err) {
+        console.warn('Direct slice notice, generating clip blob fallback:', err);
+        try {
+          const fallbackRes = await createDownloadableClipBlob(clip, clip.thumbnailBlobUrl);
+          clip.videoBlobUrl = fallbackRes.url;
+          clip.videoExtension = fallbackRes.extension;
+          downloadClipAsMp4(clip, undefined, fallbackRes.extension);
+        } catch {
+          downloadClipAsMp4(clip, currentSource.url);
+        }
       }
     }
   };

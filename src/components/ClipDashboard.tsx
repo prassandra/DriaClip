@@ -31,10 +31,10 @@ import {
   renderClipBlob, 
   createDownloadableClipBlob, 
   calculateClipThumbnailTime,
-  downloadServerRenderedClip 
+  downloadServerRenderedClip,
+  downloadServerRenderedLocalClip 
 } from '../services/videoClipper';
 import { GeneratedClip, VideoSourceMetadata } from '../types/driaclip';
-import { interpolateTrackingCropX } from '../services/smartTracking';
 import { Language, TRANSLATIONS } from '../i18n/translations';
 
 interface ClipDashboardProps {
@@ -108,10 +108,8 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
   const [ytOffset, setYtOffset] = useState(0);
   const [ytIframeKey, setYtIframeKey] = useState(0);
 
-  // Dynamic Steadicam camera tracking following active speaker
-  const activeCropX = (clip.verticalStyle === 'auto-track' || clip.autoTrackEnabled) && clip.trackingKeyframes && clip.trackingKeyframes.length > 0
-    ? interpolateTrackingCropX(clip.trackingKeyframes, isYouTube ? (clip.startTime + ytElapsed) : clipCurrentTime, clip.cropPositionX ?? 50)
-    : (clip.cropPositionX ?? 50);
+  // Fixed center-crop (tengah-tengah frame)
+  const activeCropX = 50;
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
@@ -155,7 +153,7 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
     if (isYouTube && isPlaying) {
       interval = setInterval(() => {
         setYtElapsed((prev) => {
-          const next = prev + 1;
+          const next = Math.round((prev + 0.1) * 10) / 10;
           if (next >= clip.duration) {
             setTimeout(() => {
               setIsPlaying(false);
@@ -166,7 +164,7 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
           }
           return next;
         });
-      }, 1000);
+      }, 100);
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -382,40 +380,53 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
                   </button>
                 </div>
               ) : (
-                <div 
-                  className="relative overflow-hidden flex items-center justify-center w-full h-full"
-                  style={
-                    isSourceLandscape
-                      ? isVertical
-                        ? { 
-                            width: '316.05%', 
-                            height: '100%', 
-                            position: 'absolute', 
-                            top: 0, 
-                            left: `${-( (activeCropX / 100) * 216.05 )}%`,
-                            transition: 'left 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)' 
-                          }
-                        : isSquare
-                        ? { 
-                            width: '177.78%', 
-                            height: '100%', 
-                            position: 'absolute', 
-                            top: 0, 
-                            left: `${-( (activeCropX / 100) * 77.78 )}%`,
-                            transition: 'left 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)' 
-                          }
+                <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-black">
+                  {/* Soft blurred background for vertical center crop */}
+                  {isVertical && (
+                    <>
+                      <img
+                        src={clip.thumbnailBlobUrl || source?.thumbnailUrl}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-65 pointer-events-none"
+                      />
+                      <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+                    </>
+                  )}
+                  <div 
+                    className="relative overflow-hidden flex items-center justify-center w-full h-full"
+                    style={
+                      isSourceLandscape
+                        ? isVertical
+                          ? { 
+                              width: '316.05%', 
+                              height: '100%', 
+                              position: 'absolute', 
+                              top: 0, 
+                              left: '-108.025%',
+                              transform: `scale(${1.0 - ((clip.zoomOutPercent ?? 20) / 100) * 0.40})`,
+                              transformOrigin: 'center center'
+                            }
+                          : isSquare
+                          ? { 
+                              width: '177.78%', 
+                              height: '100%', 
+                              position: 'absolute', 
+                              top: 0, 
+                              left: '-38.89%',
+                            }
+                          : { width: '100%', height: '100%' }
                         : { width: '100%', height: '100%' }
-                      : { width: '100%', height: '100%' }
-                  }
-                >
-                  <iframe
-                    key={ytIframeKey}
-                    src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
-                    title={clip.title}
-                    className="w-full h-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
+                    }
+                  >
+                    <iframe
+                      key={ytIframeKey}
+                      src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                      title={clip.title}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -530,17 +541,7 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
               </div>
             )}
 
-            {/* Floating Live Speaker Focus AI Indicator */}
-            {isVertical && clip.verticalStyle === 'auto-track' && (
-              <div className="absolute top-2.5 right-2.5 z-20 pointer-events-none">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/85 border border-emerald-500/50 text-emerald-300 text-[10px] font-mono backdrop-blur-md shadow-lg">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
-                  <span>{isId ? 'Fokus Pembicara' : 'Speaker Focus'} &bull; {Math.round(activeCropX)}%</span>
-                </div>
-              </div>
-            )}
-
-            {isVertical && clip.verticalStyle === 'blur-background' && (
+            {isVertical && (clip.verticalStyle === 'blur-background' || clip.verticalStyle === 'center-crop' || !clip.verticalStyle) && (
               <>
                 <img
                   src={clip.thumbnailBlobUrl || source?.thumbnailUrl}
@@ -574,10 +575,12 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
               preload="metadata"
               muted={isMuted}
               style={{
-                objectPosition: clip.verticalStyle === 'auto-track' ? `${activeCropX}% center` : 'center center',
-                transition: 'object-position 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                objectPosition: 'center center',
+                transform: isVertical && (clip.verticalStyle === 'center-crop' || !clip.verticalStyle)
+                  ? `scale(${1.0 - ((clip.zoomOutPercent ?? 20) / 100) * 0.40})`
+                  : undefined,
               }}
-              className={`w-full h-full cursor-pointer relative z-10 ${
+              className={`w-full h-full cursor-pointer relative z-10 transition-transform ${
                 isVertical
                   ? clip.verticalStyle === 'blur-background'
                     ? 'object-contain'
@@ -669,9 +672,9 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
           </span>
 
           <div className="flex items-center gap-1">
-            {clip.verticalStyle === 'auto-track' && (
-              <span className="rounded-full bg-emerald-600/90 backdrop-blur-md px-2 py-0.5 text-[9px] font-mono font-bold text-white border border-emerald-400/30 shadow-xs flex items-center gap-1">
-                <span>🤖 Auto-Follow</span>
+            {clip.aspectRatio === '9:16' && (clip.verticalStyle === 'center-crop' || !clip.verticalStyle) && (
+              <span className="rounded-full bg-violet-600/90 backdrop-blur-md px-2 py-0.5 text-[9px] font-mono font-bold text-white border border-violet-400/30 shadow-xs flex items-center gap-1">
+                <span>Zoom-Out {clip.zoomOutPercent ?? 20}%</span>
               </span>
             )}
             <span className="rounded-full bg-slate-900/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
@@ -713,10 +716,10 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
             <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 uppercase px-1">
               {clip.exportQuality}
             </span>
-            {(clip.verticalStyle === 'auto-track' || clip.autoTrackEnabled) && (
-              <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/60 px-1.5 py-0.5 rounded">
-                <Sparkles className="h-2.5 w-2.5" />
-                <span>{isId ? 'Fokus Pembicara' : 'Speaker Focus'}</span>
+            {clip.aspectRatio === '9:16' && (clip.verticalStyle === 'center-crop' || !clip.verticalStyle) && (
+              <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/70 border border-violet-200 dark:border-violet-800/60 px-1.5 py-0.5 rounded">
+                <Sparkles className="h-2.5 w-2.5 text-violet-500" />
+                <span>{isId ? 'Crop Tengah (Zoom-Out)' : 'Center Crop (Zoom-Out)'}</span>
               </span>
             )}
           </div>
@@ -813,7 +816,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
   const handleDownloadSingle = async (clip: GeneratedClip) => {
     // 1. If video blob already generated, download immediately!
     if (clip.videoBlobUrl) {
-      downloadClipAsMp4(clip);
+      downloadClipAsMp4(clip, undefined, clip.videoExtension);
       return;
     }
 
@@ -830,6 +833,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
 
         const result = await downloadServerRenderedClip(clip, source.url, source.youtubeId);
         clip.videoBlobUrl = result.url;
+        clip.videoExtension = 'mp4';
         downloadClipAsMp4(clip, undefined, 'mp4');
         serverSuccess = true;
         return;
@@ -842,7 +846,6 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
       }
 
       // Fallback generator for YouTube links when server scraping is rate-limited:
-      // Creates an authentic downloadable video clip matching exact duration with audio track and waveforms!
       try {
         setRenderingClip({
           id: clip.id,
@@ -860,7 +863,8 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
         );
 
         clip.videoBlobUrl = result.url;
-        downloadClipAsMp4(clip);
+        clip.videoExtension = result.extension;
+        downloadClipAsMp4(clip, undefined, result.extension);
         return;
       } catch (errFallback) {
         console.error('Client fallback clip generation failed:', errFallback);
@@ -870,15 +874,28 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
       return;
     }
 
-    // 3. If offline file or direct stream, slice the exact clip in browser!
+    // 3. If offline file or direct stream, slice the exact clip into genuine MP4/WebM!
     if (source?.url) {
       try {
         setRenderingClip({
           id: clip.id,
-          progress: 10,
+          progress: 20,
           title: clip.title,
           duration: clip.duration,
         });
+
+        // Try high-speed server rendering first to guarantee authentic MP4 output
+        try {
+          const blobRes = await fetch(source.url);
+          const localBlob = await blobRes.blob();
+          const serverLocalResult = await downloadServerRenderedLocalClip(clip, localBlob);
+          clip.videoBlobUrl = serverLocalResult.url;
+          clip.videoExtension = 'mp4';
+          downloadClipAsMp4(clip, undefined, 'mp4');
+          return;
+        } catch (serverLocalErr) {
+          console.warn('Server local render notice, falling back to browser slice:', serverLocalErr);
+        }
 
         const result = await renderClipBlob(
           source.url,
@@ -891,11 +908,13 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
             setRenderingClip((prev) => (prev ? { ...prev, progress: Math.max(5, percent) } : null));
           },
           clip.cropPositionX ?? 50,
-          clip.trackingKeyframes
+          clip.trackingKeyframes,
+          clip.zoomOutPercent ?? 20
         );
 
         clip.videoBlobUrl = result.url;
         clip.estimatedSizeBytes = result.size;
+        clip.videoExtension = result.extension;
 
         // Trigger download with correct format
         downloadClipAsMp4(clip, undefined, result.extension);
@@ -977,8 +996,12 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
       a.download = `DriaClip_Batch_${Date.now()}.zip`;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(downloadUrl);
+      setTimeout(() => {
+        if (a.parentNode) {
+          a.parentNode.removeChild(a);
+        }
+        URL.revokeObjectURL(downloadUrl);
+      }, 60000);
     } catch (err) {
       console.error('Batch zip creation failed:', err);
     } finally {

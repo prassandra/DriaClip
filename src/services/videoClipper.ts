@@ -1,5 +1,4 @@
 import { AspectRatio, VerticalStyle, GeneratedClip, ExportQuality, TrackingKeyframe } from '../types/driaclip';
-import { SmoothCameraFollower, detectSpeakerFocusX, interpolateTrackingCropX } from './smartTracking';
 
 /**
  * Calculates the exact second to capture the starting thumbnail frame for a clip.
@@ -154,7 +153,8 @@ export async function captureVideoThumbnail(
   startTime: number = 0,
   endTime: number = 15,
   clipTitle?: string,
-  cropPositionX: number = 50
+  cropPositionX: number = 50,
+  zoomOutPercent: number = 20
 ): Promise<string> {
   const safeTime = Math.max(0.1, timeSeconds);
   const timeStr = formatTimeCode(safeTime);
@@ -223,13 +223,27 @@ export async function captureVideoThumbnail(
                 const fgH = img.naturalHeight * fitScale;
                 ctx.drawImage(img, 0, (height - fgH) / 2, width, fgH);
               } else {
-                // auto-track or focal crop
-                const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
-                const renderW = img.naturalWidth * scale;
-                const renderH = img.naturalHeight * scale;
-                const maxShift = Math.max(0, renderW - width);
-                const shiftX = (cropPositionX / 100) * maxShift;
-                ctx.drawImage(img, -shiftX, (height - renderH) / 2, renderW, renderH);
+                // center-crop (or non-blur) with comfortable Zoom-Out
+                const zoomFactor = Math.max(0.05, Math.min(0.45, (zoomOutPercent ?? 20) / 100));
+                const tightScale = height / img.naturalHeight;
+                const fitScale = width / img.naturalWidth;
+                const scale = tightScale - (tightScale - fitScale) * zoomFactor * 1.8;
+                const fgW = img.naturalWidth * scale;
+                const fgH = img.naturalHeight * scale;
+                const fgX = (width - fgW) / 2;
+                const fgY = (height - fgH) / 2;
+
+                // Soft background blur
+                ctx.save();
+                ctx.filter = 'blur(18px) brightness(0.60)';
+                const bgScale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
+                const bgW = img.naturalWidth * bgScale;
+                const bgH = img.naturalHeight * bgScale;
+                ctx.drawImage(img, (width - bgW) / 2, (height - bgH) / 2, bgW, bgH);
+                ctx.restore();
+
+                // Centered sharp zoomed-out foreground
+                ctx.drawImage(img, fgX, fgY, fgW, fgH);
               }
             } else if (aspectRatio === '1:1') {
               const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
@@ -378,9 +392,12 @@ export async function captureVideoThumbnail(
 
     const cleanup = () => {
       clearTimeout(timeout);
-      video.removeAttribute('src');
-      video.load();
-      video.remove();
+      try {
+        video.pause();
+        if (video.parentNode) {
+          video.parentNode.removeChild(video);
+        }
+      } catch {}
     };
 
     const captureFrame = () => {
@@ -422,12 +439,25 @@ export async function captureVideoThumbnail(
             const fgH = vh * fitScale;
             ctx.drawImage(video, 0, (height - fgH) / 2, width, fgH);
           } else {
-            // auto-track: dynamic crop
-            const cropW = (vh * 9) / 16;
-            const maxCropX = Math.max(0, vw - cropW);
-            const ratio = Math.max(0, Math.min(100, cropPositionX)) / 100;
-            const cropX = maxCropX * ratio;
-            ctx.drawImage(video, cropX, 0, cropW, vh, 0, 0, width, height);
+            // center-crop with comfortable Zoom-Out
+            const zoomFactor = Math.max(0.05, Math.min(0.45, (zoomOutPercent ?? 20) / 100));
+            const tightScale = height / vh;
+            const fitScale = width / vw;
+            const scale = tightScale - (tightScale - fitScale) * zoomFactor * 1.8;
+            const fgW = vw * scale;
+            const fgH = vh * scale;
+            const fgX = (width - fgW) / 2;
+            const fgY = (height - fgH) / 2;
+
+            ctx.save();
+            ctx.filter = 'blur(18px) brightness(0.60)';
+            const bgScale = Math.max(width / vw, height / vh);
+            const bgW = vw * bgScale;
+            const bgH = vh * bgScale;
+            ctx.drawImage(video, (width - bgW) / 2, (height - bgH) / 2, bgW, bgH);
+            ctx.restore();
+
+            ctx.drawImage(video, fgX, fgY, fgW, fgH);
           }
         } else if (aspectRatio === '1:1') {
           const minDim = Math.min(vw, vh);
@@ -589,7 +619,8 @@ export async function renderClipBlob(
   quality: ExportQuality = '720p',
   onProgress?: (percent: number) => void,
   cropPositionX: number = 50,
-  trackingKeyframes?: TrackingKeyframe[]
+  trackingKeyframes?: TrackingKeyframe[],
+  zoomOutPercent: number = 20
 ): Promise<{ blob: Blob; url: string; size: number; extension: 'mp4' | 'webm' }> {
   return new Promise(async (resolve, reject) => {
     if (!videoUrl || videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
@@ -618,7 +649,7 @@ export async function renderClipBlob(
     video.src = videoUrl;
     video.preload = 'auto';
     video.playsInline = true;
-    video.muted = false;
+    video.muted = true;
 
     // Resolution sizing
     let targetW = 720;
@@ -749,12 +780,6 @@ export async function renderClipBlob(
       let animationFrameId: number;
       let intervalId: any;
 
-      // AI Smart Auto-Reframe Steadicam Camera Follower
-      const cameraFollower = new SmoothCameraFollower(cropPositionX, 2.2, 28, 2.5);
-      let lastAnalysisTime = 0;
-      let prevAnalysisData: ImageData | null = null;
-      let lastFramePerfTime = performance.now();
-
       const finishRecording = () => {
         if (isDone) return;
         isDone = true;
@@ -768,7 +793,14 @@ export async function renderClipBlob(
       };
 
       recorder.onstop = async () => {
-        const finalBlob = new Blob(chunks, { type: mimeType });
+        let finalBlob = new Blob(chunks, { type: mimeType });
+        if (chosenExt === 'webm' || mimeType.includes('webm')) {
+          try {
+            finalBlob = await fixWebmDuration(finalBlob, targetDuration * 1000);
+          } catch (e) {
+            console.warn('fixWebmDuration error:', e);
+          }
+        }
         const blobUrl = URL.createObjectURL(finalBlob);
 
         // Cleanup
@@ -785,10 +817,6 @@ export async function renderClipBlob(
       const drawLoop = () => {
         if (isDone) return;
 
-        const nowPerf = performance.now();
-        const dt = Math.max(0.01, Math.min(0.1, (nowPerf - lastFramePerfTime) / 1000));
-        lastFramePerfTime = nowPerf;
-
         const cur = video.currentTime;
         const elapsed = Math.max(0, cur - startTime);
         const progress = Math.min(99, Math.round((elapsed / targetDuration) * 100));
@@ -798,27 +826,8 @@ export async function renderClipBlob(
         const vw = video.videoWidth || 1280;
         const vh = video.videoHeight || 720;
 
-        // Dynamic auto-follow crop calculation
-        let currentEffectiveCropX = cropPositionX;
-
-        if (verticalStyle === 'auto-track') {
-          if (trackingKeyframes && trackingKeyframes.length > 0) {
-            const interpolatedTarget = interpolateTrackingCropX(trackingKeyframes, cur, cropPositionX);
-            currentEffectiveCropX = cameraFollower.update(interpolatedTarget, false, dt, 1.0, cur);
-          } else {
-            // Live real-time computer vision analysis every ~350ms to follow active speaker
-            if (cur - lastAnalysisTime >= 0.35 || lastAnalysisTime === 0) {
-              lastAnalysisTime = cur;
-              detectSpeakerFocusX(video, vw, vh, prevAnalysisData)
-                .then((res) => {
-                  prevAnalysisData = res.frameData;
-                  cameraFollower.setTarget(res.targetCropX, res.isSceneCut, res.confidence, cur);
-                })
-                .catch(() => {});
-            }
-            currentEffectiveCropX = cameraFollower.update(undefined, false, dt, 1.0, cur);
-          }
-        }
+        // Clean center-crop framing (fixed at 50% middle, zero camera panning)
+        const currentEffectiveCropX = 50;
 
         if (aspectRatio === '9:16') {
           if (verticalStyle === 'blur-background') {
@@ -849,12 +858,26 @@ export async function renderClipBlob(
             const fgY = (targetH - fgH) / 2;
             ctx.drawImage(video, 0, fgY, targetW, fgH);
           } else {
-            // Auto-track: Smooth speaker follower crop
-            const cropW = (vh * 9) / 16;
-            const maxCropX = Math.max(0, vw - cropW);
-            const ratio = Math.max(0, Math.min(100, currentEffectiveCropX)) / 100;
-            const cropX = maxCropX * ratio;
-            ctx.drawImage(video, cropX, 0, cropW, vh, 0, 0, targetW, targetH);
+            // center-crop with comfortable Zoom-Out (centered at 50%, zero stretch)
+            const zoomFactor = Math.max(0.05, Math.min(0.45, (zoomOutPercent ?? 20) / 100));
+            const tightScale = targetH / vh;
+            const fitScale = targetW / vw;
+            const scale = tightScale - (tightScale - fitScale) * zoomFactor * 1.8;
+            const fgW = vw * scale;
+            const fgH = vh * scale;
+            const fgX = (targetW - fgW) / 2;
+            const fgY = (targetH - fgH) / 2;
+
+            if (blurCtx) {
+              blurCtx.drawImage(video, 0, 0, blurCanvas.width, blurCanvas.height);
+              ctx.imageSmoothingEnabled = true;
+              ctx.imageSmoothingQuality = 'low';
+              ctx.drawImage(blurCanvas, 0, 0, targetW, targetH);
+            }
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.40)';
+            ctx.fillRect(0, 0, targetW, targetH);
+
+            ctx.drawImage(video, 0, 0, vw, vh, fgX, fgY, fgW, fgH);
           }
         } else if (aspectRatio === '1:1') {
           const minDim = Math.min(vw, vh);
@@ -956,7 +979,8 @@ export async function downloadServerRenderedClip(
       endTime: clip.endTime,
       aspectRatio: clip.aspectRatio,
       verticalStyle: clip.verticalStyle,
-      cropPositionX: clip.cropPositionX ?? 50,
+      cropPositionX: 50,
+      zoomOutPercent: clip.zoomOutPercent ?? 20,
       trackingKeyframes: clip.trackingKeyframes,
       quality: clip.exportQuality || '1080p',
       title: clip.title,
@@ -974,28 +998,62 @@ export async function downloadServerRenderedClip(
 }
 
 /**
- * Universal helper to trigger download of a generated clip as .mp4
+ * Downloads a genuine MP4 clip rendered server-side from local file/blob via ffmpeg
+ */
+export async function downloadServerRenderedLocalClip(
+  clip: GeneratedClip,
+  blobOrFile: Blob | File
+): Promise<{ blob: Blob; url: string }> {
+  const params = new URLSearchParams({
+    startTime: String(clip.startTime),
+    endTime: String(clip.endTime),
+    aspectRatio: clip.aspectRatio,
+    verticalStyle: clip.verticalStyle,
+    cropPositionX: String(clip.cropPositionX ?? 50),
+    zoomOutPercent: String(clip.zoomOutPercent ?? 20),
+    quality: clip.exportQuality || '720p',
+    title: clip.title || 'clip',
+  });
+
+  const res = await fetch(`/api/render-local-clip?${params.toString()}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: blobOrFile,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Gagal memproses klip video lokal');
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  return { blob, url };
+}
+
+/**
+ * Universal helper to trigger download of a generated clip with correct extension (.mp4 or .webm)
  */
 export function downloadClipAsMp4(clip: GeneratedClip, fallbackSourceUrl?: string, preferredExt?: string): void {
-  const safeTitle = clip.title.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
-  const ext = preferredExt || 'mp4';
+  const safeTitle = (clip.title || 'clip').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
+  const ext = preferredExt || clip.videoExtension || 'mp4';
   const fileName = `driaclip_${clip.exportQuality || '1080p'}_${safeTitle || clip.id}.${ext}`;
+  const downloadTarget = clip.videoBlobUrl || fallbackSourceUrl;
 
-  if (clip.videoBlobUrl) {
+  if (downloadTarget) {
     const a = document.createElement('a');
-    a.href = clip.videoBlobUrl;
+    a.href = downloadTarget;
     a.download = fileName;
+    if (!clip.videoBlobUrl && fallbackSourceUrl) {
+      a.rel = 'noopener noreferrer';
+    }
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-  } else if (fallbackSourceUrl) {
-    const a = document.createElement('a');
-    a.href = fallbackSourceUrl;
-    a.download = fileName;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    setTimeout(() => {
+      if (a.parentNode) {
+        a.parentNode.removeChild(a);
+      }
+    }, 1500);
   }
 }
 
@@ -1008,7 +1066,7 @@ export async function createDownloadableClipBlob(
   clip: GeneratedClip,
   thumbnailUrl?: string,
   onProgress?: (percent: number) => void
-): Promise<{ blob: Blob; url: string }> {
+): Promise<{ blob: Blob; url: string; extension: 'mp4' | 'webm' }> {
   return new Promise(async (resolve) => {
     const targetDuration = Math.max(1, clip.duration || 15);
     const isVertical = clip.aspectRatio === '9:16';
@@ -1022,6 +1080,18 @@ export async function createDownloadableClipBlob(
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
+
+    // Preload image before starting recording so frame 0 is never black!
+    const posterSrc = thumbnailUrl || clip.thumbnailBlobUrl;
+    if (posterSrc) {
+      await new Promise<void>((r) => {
+        img.onload = () => r();
+        img.onerror = () => r();
+        img.src = posterSrc;
+        if (img.complete && img.naturalWidth > 0) r();
+        setTimeout(r, 800);
+      });
+    }
 
     // Audio synthesizer to provide a real audio track
     let audioCtx: AudioContext | null = null;
@@ -1048,11 +1118,17 @@ export async function createDownloadableClipBlob(
     } catch {}
 
     let mimeType = 'video/webm';
+    let chosenExt: 'mp4' | 'webm' = 'webm';
     if (typeof MediaRecorder !== 'undefined') {
-      if (MediaRecorder.isTypeSupported('video/mp4')) {
+      if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2')) {
+        mimeType = 'video/mp4;codecs=avc1,mp4a.40.2';
+        chosenExt = 'mp4';
+      } else if (MediaRecorder.isTypeSupported('video/mp4')) {
         mimeType = 'video/mp4';
+        chosenExt = 'mp4';
       } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
         mimeType = 'video/webm;codecs=vp9,opus';
+        chosenExt = 'webm';
       }
     }
 
@@ -1081,7 +1157,7 @@ export async function createDownloadableClipBlob(
 
     recorder.onstop = async () => {
       let finalBlob = new Blob(chunks, { type: mimeType });
-      if (mimeType.includes('webm')) {
+      if (chosenExt === 'webm' || mimeType.includes('webm')) {
         try {
           finalBlob = await fixWebmDuration(finalBlob, targetDuration * 1000);
         } catch {}
@@ -1090,7 +1166,7 @@ export async function createDownloadableClipBlob(
       if (audioCtx && audioCtx.state !== 'closed') {
         audioCtx.close().catch(() => {});
       }
-      resolve({ blob: finalBlob, url });
+      resolve({ blob: finalBlob, url, extension: chosenExt });
     };
 
     recorder.start(100);
@@ -1169,10 +1245,5 @@ export async function createDownloadableClipBlob(
 
     // Timeout safety
     setTimeout(finishRecord, (targetDuration + 1.5) * 1000);
-
-    const posterSrc = thumbnailUrl || clip.thumbnailBlobUrl;
-    if (posterSrc) {
-      img.src = posterSrc;
-    }
   });
 }

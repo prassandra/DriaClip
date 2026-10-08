@@ -28,15 +28,18 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
   const [hookText, setHookText] = useState(clip.hookText);
   const [startTime, setStartTime] = useState(clip.startTime);
   const [endTime, setEndTime] = useState(clip.endTime);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const duration = Math.max(1, endTime - startTime);
 
   const handleNudgeStart = (delta: number) => {
+    setErrorMsg(null);
     const next = Math.max(0, Math.min(endTime - 3, startTime + delta));
     setStartTime(next);
   };
 
   const handleNudgeEnd = (delta: number) => {
+    setErrorMsg(null);
     const next = Math.min(maxSourceDuration, Math.max(startTime + 3, endTime + delta));
     setEndTime(next);
   };
@@ -44,7 +47,7 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (endTime <= startTime) {
-      alert('End time must be after start time.');
+      setErrorMsg(isId ? 'Waktu selesai harus lebih besar dari waktu mulai.' : 'End time must be after start time.');
       return;
     }
 
@@ -179,27 +182,34 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
             <span className="font-semibold text-neutral-200">{duration} {isId ? 'detik' : 'seconds'}</span>
           </div>
 
-          {/* AI Auto-Follow & Face Detector Status */}
-          {clip.verticalStyle === 'auto-track' && (
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-3.5 space-y-1.5">
+          {/* Framing Status Banner */}
+          {clip.aspectRatio === '9:16' && (
+            <div className="rounded-xl border border-violet-500/30 bg-violet-950/30 p-3.5 space-y-1.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
-                  <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
-                  <span>{isId ? 'AI Auto-Follow & Face Detector Aktif' : 'AI Auto-Follow & Face Detector Active'}</span>
+                <div className="flex items-center gap-2 text-violet-300 font-bold text-xs">
+                  <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+                  <span>{isId ? `Crop Tengah (Zoom-Out ${clip.zoomOutPercent ?? 20}%)` : `Center Crop (${clip.zoomOutPercent ?? 20}% Zoom-Out)`}</span>
                 </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-600/50">
-                  {isId ? 'Otomatis' : 'Automatic'}
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-violet-900/60 text-violet-300 border border-violet-600/50">
+                  {isId ? 'Bebas Stretch' : 'No Stretch'}
                 </span>
               </div>
               <p className="text-[11px] text-neutral-300 leading-relaxed">
                 {isId
-                  ? 'Kamera 9:16 otomatis mendeteksi wajah dan mengarahkan fokus ke orang yang sedang aktif berbicara sepanjang durasi klip tanpa perlu menggeser frame secara manual.'
-                  : 'The 9:16 camera automatically tracks faces and locks onto the active speaker throughout the clip without manual adjustments.'}
+                  ? 'Frame diposisikan pas di tengah video (50%) dengan zoom-out proporsional sehingga subjek memiliki ruang pandang yang nyaman dan tidak terpotong sempit.'
+                  : 'Framing is locked directly in the center (50%) with a comfortable zoom-out margin for a wide, natural perspective.'}
               </p>
             </div>
           )}
 
 
+
+          {/* Error Message */}
+          {errorMsg && (
+            <div className="rounded-lg border border-rose-500/30 bg-rose-950/40 p-2.5 text-xs text-rose-300">
+              {errorMsg}
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-neutral-800">

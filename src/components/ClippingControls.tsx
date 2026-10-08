@@ -300,36 +300,36 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
                   {t.controls.verticalTreatment}
                 </span>
                 <span className="text-[10px] font-mono font-bold text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-950/70 px-2 py-0.5 rounded">
-                  {config.verticalStyle === 'auto-track'
-                    ? (isId ? 'Auto-Follow Kamera (AI)' : 'Auto-Follow Camera')
+                  {config.verticalStyle === 'center-crop'
+                    ? (isId ? `Crop Tengah (${config.zoomOutPercent ?? 20}% Zoom-Out)` : `Center Crop (${config.zoomOutPercent ?? 20}% Zoom-Out)`)
                     : config.verticalStyle === 'blur-background'
-                    ? (isId ? 'Latar Blur' : 'Blur Background')
+                    ? (isId ? 'Latar Blur Penuh' : 'Blur Background')
                     : (isId ? 'Bilah Hitam' : 'Letterbox')}
                 </span>
               </div>
 
-              {/* 3 Clear Vertical Modes: Auto-Track AI, Latar Blur, Bilah Hitam */}
+              {/* 3 Clear Vertical Modes: Crop Tengah Zoom-Out, Latar Blur, Bilah Hitam */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                 {[
                   { 
-                    id: 'auto-track' as VerticalStyle, 
-                    label: isId ? 'Fokus Pembicara (AI)' : 'Speaker Focus (AI)', 
-                    badge: isId ? 'Stabil' : 'Steady',
-                    desc: isId ? 'Kamera fokus mengunci orang yang berbicara secara stabil tanpa gerak patah-patah' : 'Locks camera steadily on active speaker without jitter',
+                    id: 'center-crop' as VerticalStyle, 
+                    label: isId ? 'Crop Tengah (Zoom-Out)' : 'Center Crop (Zoomed-Out)', 
+                    badge: isId ? 'Pas & Luas' : 'Recommended',
+                    desc: isId ? 'Frame pas di tengah (50%), di-zoom out proporsional agar tidak terlalu sempit dan tanpa stretch' : 'Centered framing, comfortably zoomed out without tight crop or stretch',
                     highlight: true 
                   },
                   { 
                     id: 'blur-background' as VerticalStyle, 
-                    label: isId ? 'Latar Blur' : 'Blur Background',
-                    badge: isId ? 'Populer' : 'Popular',
-                    desc: isId ? 'Video di tengah dengan background blur atas & bawah' : 'Blurred video backdrop',
+                    label: isId ? 'Latar Blur Penuh' : 'Full Blur Background', 
+                    badge: isId ? '100% Utuh' : 'Full View',
+                    desc: isId ? 'Video 16:9 utuh di tengah tanpa terpotong, dengan latar blur atas & bawah' : 'Full 16:9 width centered with blurred backdrop',
                     highlight: false
                   },
                   { 
                     id: 'letterbox' as VerticalStyle, 
-                    label: isId ? 'Bilah Hitam' : 'Letterbox Bars',
+                    label: isId ? 'Bilah Hitam' : 'Letterbox Bars', 
                     badge: isId ? 'Sinematik' : 'Classic',
-                    desc: isId ? 'Video di tengah dengan bilah hitam atas & bawah' : 'Clean black bars framing',
+                    desc: isId ? 'Video di tengah dengan bilah hitam atas & bawah' : 'Centered with clean black bars',
                     highlight: false
                   },
                 ].map((style) => (
@@ -364,17 +364,63 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
                 ))}
               </div>
 
-              {/* Informative Banner based on Selected Mode */}
-              {config.verticalStyle === 'auto-track' && (
-                <div className="rounded-xl bg-violet-500/10 dark:bg-violet-950/40 border border-violet-500/30 p-3 space-y-1.5 animate-in fade-in duration-200">
-                  <div className="flex items-center gap-2 text-violet-800 dark:text-violet-300 font-bold text-xs">
-                    <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                    <span>{isId ? 'Mode Fokus Pembicara Aktif (Kamera Stabil)' : 'Smart Speaker Focus Active (Steady Camera)'}</span>
+              {/* Informative Banner & Zoom-Out Controls based on Selected Mode */}
+              {config.verticalStyle === 'center-crop' && (
+                <div className="rounded-xl bg-violet-500/10 dark:bg-violet-950/40 border border-violet-500/30 p-3.5 space-y-3 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-violet-800 dark:text-violet-300 font-bold text-xs">
+                      <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                      <span>{isId ? 'Tingkat Zoom-Out Frame (Bebas Stretch)' : 'Frame Zoom-Out Level (No Stretch)'}</span>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-violet-600 dark:text-violet-400 bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-violet-200 dark:border-violet-800">
+                      {config.zoomOutPercent ?? 20}% Zoom-Out
+                    </span>
                   </div>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+
+                  {/* Preset Pills */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 shrink-0">{isId ? 'Preset:' : 'Preset:'}</span>
+                    {[
+                      { val: 10, label: isId ? '10% (Rapat)' : '10% (Close)' },
+                      { val: 20, label: isId ? '20% (Nyaman / Pas)' : '20% (Optimal)' },
+                      { val: 30, label: isId ? '30% (Luas)' : '30% (Wide)' },
+                    ].map((p) => (
+                      <button
+                        key={p.val}
+                        type="button"
+                        onClick={() => updateConfig('zoomOutPercent', p.val)}
+                        className={`px-2.5 py-1 text-[11px] font-mono rounded-lg transition-colors cursor-pointer ${
+                          (config.zoomOutPercent ?? 20) === p.val
+                            ? 'bg-violet-600 text-white font-bold shadow-xs'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-violet-100 dark:hover:bg-violet-900/40 border border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Range Slider */}
+                  <div className="space-y-1">
+                    <input
+                      type="range"
+                      min={5}
+                      max={40}
+                      step={1}
+                      value={config.zoomOutPercent ?? 20}
+                      onChange={(e) => updateConfig('zoomOutPercent', parseInt(e.target.value, 10))}
+                      className="w-full accent-violet-600 cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                      <span>{isId ? '5% (Lebih Fokus)' : '5% (Focused)'}</span>
+                      <span>{isId ? '40% (Lebih Luas)' : '40% (Broader View)'}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed border-t border-violet-500/20 pt-2">
                     {isId 
-                      ? 'Kamera otomatis mendeteksi orang yang sedang berbicara dan mengunci bingkai 9:16 secara tenang dan stabil (tidak terus bergerak / tidak patah-patah). Jika ada pergantian pembicara, kamera berpindah secara rapi.' 
-                      : 'The camera detects the active speaker and holds the 9:16 framing rock-solid and steady without constant jitter or lag. When speakers alternate, it transitions cleanly.'}
+                      ? '✓ Kamera tetap tenang di tengah (50%). Zoom-out memperluas bidang pandang secara proporsional agar subjek dan kepala tidak terasa terlalu dekat/sempit (fit) dan tanpa deformasi/stretch sama sekali.' 
+                      : '✓ The camera remains locked in the center (50%). Zoom-out broadens the field of view proportionally so the talent is not cramped or stretched.'}
                   </p>
                 </div>
               )}
@@ -383,7 +429,7 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
                 <div className="rounded-xl bg-sky-500/10 dark:bg-sky-950/40 border border-sky-500/30 p-3 space-y-1.5 animate-in fade-in duration-200">
                   <div className="flex items-center gap-2 text-sky-800 dark:text-sky-300 font-bold text-xs">
                     <Video className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
-                    <span>{isId ? 'Mode Latar Blur Aktif' : 'Blur Background Mode Active'}</span>
+                    <span>{isId ? 'Mode Latar Blur Penuh Aktif' : 'Full Blur Background Mode Active'}</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
                     {isId 

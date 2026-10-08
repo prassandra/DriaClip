@@ -1,15 +1,10 @@
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { execFile, spawn } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import type { IncomingMessage, ServerResponse } from 'http';
-import { 
-  analyzePixelBuffer, 
-  SmoothCameraFollower, 
-  buildFfmpegCropExpression, 
-  TrackingKeyframe 
-} from '../services/smartTracking.ts';
+import type { TrackingKeyframe } from '../types/driaclip.ts';
 
 const execFileAsync = promisify(execFile);
 
@@ -32,103 +27,17 @@ export interface RenderClipRequest {
   startTime?: number;
   endTime?: number;
   aspectRatio?: '16:9' | '9:16' | '1:1';
-  verticalStyle?: 'auto-track' | 'blur-background' | 'letterbox';
+  verticalStyle?: 'center-crop' | 'auto-track' | 'blur-background' | 'letterbox';
   cropPositionX?: number;
+  zoomOutPercent?: number;
   trackingKeyframes?: TrackingKeyframe[];
   quality?: '1080p' | '720p' | '480p' | '360p';
   title?: string;
 }
 
 /**
- * Server-side High Speed Video Frame Analyzer.
- * Extracts 1 sample frame per second directly via ffmpeg stdout pipe (zero disk IO),
- * runs the multi-face & active-speaker detection engine, and produces smooth tracking keyframes.
- */
-async function analyzeVideoFileForTracking(
-  videoFilePath: string,
-  targetW: number = 720
-): Promise<string> {
-  return new Promise((resolve) => {
-    const frameW = 160;
-    const frameH = 90;
-    const bytesPerFrame = frameW * frameH * 3; // RGB24 stride 3
-
-    const ffmpegProc = spawn('/usr/bin/ffmpeg', [
-      '-i',
-      videoFilePath,
-      '-vf',
-      `fps=2.0,scale=${frameW}:${frameH}`,
-      '-f',
-      'rawvideo',
-      '-pix_fmt',
-      'rgb24',
-      '-',
-    ]);
-
-    const chunks: Buffer[] = [];
-    ffmpegProc.stdout.on('data', (d) => chunks.push(d));
-
-    ffmpegProc.on('error', () => {
-      resolve(`(in_w-${targetW})*0.5`);
-    });
-
-    ffmpegProc.on('close', () => {
-      try {
-        const fullBuffer = Buffer.concat(chunks);
-        const totalFrames = Math.floor(fullBuffer.length / bytesPerFrame);
-
-        if (totalFrames <= 0) {
-          resolve(`(in_w-${targetW})*0.5`);
-          return;
-        }
-
-        const follower = new SmoothCameraFollower(50, 2.2, 28, 2.5);
-        const keyframes: TrackingKeyframe[] = [];
-        let prevFrame: Uint8Array | null = null;
-        const dt = 0.5; // at fps=2.0, frame step is 0.5s
-
-        for (let i = 0; i < totalFrames; i++) {
-          const offset = i * bytesPerFrame;
-          const frameBytes = fullBuffer.subarray(offset, offset + bytesPerFrame);
-          const timeSec = Math.round((i / 2.0) * 10) / 10;
-
-          const analysis = analyzePixelBuffer(frameBytes, frameW, frameH, prevFrame, 3);
-          prevFrame = frameBytes;
-
-          const smoothCropX = follower.update(
-            analysis.targetCropX,
-            analysis.isSceneCut,
-            dt,
-            analysis.confidence,
-            timeSec
-          );
-
-          keyframes.push({
-            time: timeSec,
-            cropX: Math.round(smoothCropX),
-          });
-        }
-
-        const expr = buildFfmpegCropExpression(keyframes, 0, targetW);
-        resolve(expr);
-      } catch {
-        resolve(`(in_w-${targetW})*0.5`);
-      }
-    });
-
-    // Safety timeout after 5 seconds
-    setTimeout(() => {
-      try {
-        ffmpegProc.kill();
-      } catch {}
-      resolve(`(in_w-${targetW})*0.5`);
-    }, 5500);
-  });
-}
-
-/**
  * Core handler to download & render clip into an authentic MP4 using yt-dlp and ffmpeg
- * with dynamic AI camera follow / active speaker tracking.
+ * with comfortable zoomed-out center-crop and optional full blur/letterbox.
  */
 export async function handleRenderClip(body: RenderClipRequest): Promise<{ filePath: string; fileName: string; cleanup: () => void }> {
   const {
@@ -137,7 +46,7 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
     startTime = 0,
     endTime = 15,
     aspectRatio = '9:16',
-    verticalStyle = 'auto-track',
+    verticalStyle = 'center-crop',
     cropPositionX = 50,
     trackingKeyframes,
     quality = '720p',
@@ -219,6 +128,10 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
       targetH = aspectRatio === '9:16' ? 640 : aspectRatio === '1:1' ? 360 : 360;
     }
 
+    // Ensure even dimensions for H.264 encoder
+    targetW = targetW % 2 === 0 ? targetW : targetW - 1;
+    targetH = targetH % 2 === 0 ? targetH : targetH - 1;
+
     const ffmpegArgs: string[] = ['-y', '-i', rawClipPath];
 
     if (aspectRatio === '9:16') {
@@ -226,15 +139,25 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
         // Crisp centered 16:9, blurred video backdrop filling top and bottom
         ffmpegArgs.push(
           '-filter_complex',
-          `[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH},boxblur=20:5[bg];[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2`,
+          `[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH}:(in_w-${targetW})/2:(in_h-${targetH})/2,boxblur=20:5[bg];[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]`,
+          '-map',
+          '[outv]',
+          '-map',
+          '0:a?',
           '-c:v',
           'libx264',
           '-preset',
           'veryfast',
           '-crf',
           '23',
+          '-pix_fmt',
+          'yuv420p',
+          '-movflags',
+          '+faststart',
           '-c:a',
           'aac',
+          '-b:a',
+          '128k',
           finalClipPath
         );
       } else if (verticalStyle === 'letterbox') {
@@ -242,39 +165,55 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
         ffmpegArgs.push(
           '-vf',
           `scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2:black`,
+          '-map',
+          '0:v',
+          '-map',
+          '0:a?',
           '-c:v',
           'libx264',
           '-preset',
           'veryfast',
           '-crf',
           '23',
+          '-pix_fmt',
+          'yuv420p',
+          '-movflags',
+          '+faststart',
           '-c:a',
           'aac',
+          '-b:a',
+          '128k',
           finalClipPath
         );
       } else {
-        // Dynamic AI Steadicam Auto-Tracking Camera Follow
-        let cropExpression: string;
-
-        if (trackingKeyframes && trackingKeyframes.length > 0) {
-          // Use client precomputed keyframes
-          cropExpression = buildFfmpegCropExpression(trackingKeyframes, safeStart, targetW);
-        } else {
-          // Run server-side frame analysis directly on the downloaded video clip
-          cropExpression = await analyzeVideoFileForTracking(rawClipPath, targetW);
-        }
+        // center-crop: Centered at 50% with comfortable Zoom-Out (without tight fit or stretch!)
+        const zoomFactor = Math.max(0.05, Math.min(0.45, (Number(body.zoomOutPercent) || 20) / 100));
+        const tightH = targetH;
+        const fitH = Math.round(targetW / (16 / 9)); // e.g. 405 for 720p 9:16
+        const rawFgH = Math.round(tightH - (tightH - fitH) * zoomFactor * 1.8);
+        const safeFgH = rawFgH % 2 === 0 ? rawFgH : rawFgH - 1;
 
         ffmpegArgs.push(
-          '-vf',
-          `scale=-1:${targetH},crop=${targetW}:${targetH}:'${cropExpression}':0`,
+          '-filter_complex',
+          `[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH}:(in_w-${targetW})/2:(in_h-${targetH})/2,boxblur=25:5[bg];[0:v]scale=-2:${safeFgH}[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]`,
+          '-map',
+          '[outv]',
+          '-map',
+          '0:a?',
           '-c:v',
           'libx264',
           '-preset',
           'veryfast',
           '-crf',
           '23',
+          '-pix_fmt',
+          'yuv420p',
+          '-movflags',
+          '+faststart',
           '-c:a',
           'aac',
+          '-b:a',
+          '128k',
           finalClipPath
         );
       }
@@ -283,30 +222,50 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
       const ratio = Math.max(0, Math.min(100, Number(cropPositionX) || 50)) / 100;
       ffmpegArgs.push(
         '-vf',
-        `scale=-1:${dim},crop=${dim}:${dim}:(in_w-${dim})*${ratio}:0`,
+        `scale=-2:${dim},crop=${dim}:${dim}:(in_w-${dim})*${ratio}:0`,
+        '-map',
+        '0:v',
+        '-map',
+        '0:a?',
         '-c:v',
         'libx264',
         '-preset',
         'veryfast',
         '-crf',
         '23',
+        '-pix_fmt',
+        'yuv420p',
+        '-movflags',
+        '+faststart',
         '-c:a',
         'aac',
+        '-b:a',
+        '128k',
         finalClipPath
       );
     } else {
       // 16:9 landscape format
       ffmpegArgs.push(
         '-vf',
-        `scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease`,
+        `scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2:black`,
+        '-map',
+        '0:v',
+        '-map',
+        '0:a?',
         '-c:v',
         'libx264',
         '-preset',
         'veryfast',
         '-crf',
         '23',
+        '-pix_fmt',
+        'yuv420p',
+        '-movflags',
+        '+faststart',
         '-c:a',
         'aac',
+        '-b:a',
+        '128k',
         finalClipPath
       );
     }
@@ -314,6 +273,213 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
     await execFileAsync('/usr/bin/ffmpeg', ffmpegArgs, { timeout: 60000 });
 
     const outputPath = fs.existsSync(finalClipPath) ? finalClipPath : rawClipPath;
+    const fileName = `driaclip_${quality}_${safeTitle}.mp4`;
+
+    return { filePath: outputPath, fileName, cleanup };
+  } catch (err) {
+    cleanup();
+    throw err;
+  }
+}
+
+/**
+ * Handle rendering a local video file with accurate trimming and aspect ratio transformation
+ */
+export async function handleRenderLocalClip(
+  sourceFilePath: string,
+  options: RenderClipRequest
+): Promise<{ filePath: string; fileName: string; cleanup: () => void }> {
+  const {
+    startTime = 0,
+    endTime = 15,
+    aspectRatio = '9:16',
+    verticalStyle = 'center-crop',
+    cropPositionX = 50,
+    zoomOutPercent = 20,
+    quality = '720p',
+    title = 'clip',
+  } = options;
+
+  const safeStart = Math.max(0, Number(startTime) || 0);
+  const safeEnd = Math.max(safeStart + 0.5, Number(endTime) || 15);
+  const safeDuration = safeEnd - safeStart;
+  const safeTitle = (String(title) || 'clip').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
+
+  const clipId = `local_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const finalClipPath = path.join(CACHE_DIR, `${clipId}_final.mp4`);
+
+  const cleanup = () => {
+    try {
+      if (fs.existsSync(finalClipPath)) fs.unlinkSync(finalClipPath);
+    } catch {}
+  };
+
+  try {
+    let targetW = 720;
+    let targetH = 1280;
+    if (quality === '1080p') {
+      targetW = aspectRatio === '9:16' ? 1080 : aspectRatio === '1:1' ? 1080 : 1920;
+      targetH = aspectRatio === '9:16' ? 1920 : aspectRatio === '1:1' ? 1080 : 1080;
+    } else if (quality === '720p') {
+      targetW = aspectRatio === '9:16' ? 720 : aspectRatio === '1:1' ? 720 : 1280;
+      targetH = aspectRatio === '9:16' ? 1280 : aspectRatio === '1:1' ? 720 : 720;
+    } else if (quality === '480p') {
+      targetW = aspectRatio === '9:16' ? 480 : aspectRatio === '1:1' ? 480 : 854;
+      targetH = aspectRatio === '9:16' ? 854 : aspectRatio === '1:1' ? 480 : 480;
+    } else if (quality === '360p') {
+      targetW = aspectRatio === '9:16' ? 360 : aspectRatio === '1:1' ? 360 : 640;
+      targetH = aspectRatio === '9:16' ? 640 : aspectRatio === '1:1' ? 360 : 360;
+    }
+
+    targetW = targetW % 2 === 0 ? targetW : targetW - 1;
+    targetH = targetH % 2 === 0 ? targetH : targetH - 1;
+
+    const ffmpegArgs: string[] = [
+      '-y',
+      '-ss',
+      String(safeStart),
+      '-t',
+      String(safeDuration),
+      '-i',
+      sourceFilePath,
+    ];
+
+    if (aspectRatio === '9:16') {
+      if (verticalStyle === 'blur-background') {
+        ffmpegArgs.push(
+          '-filter_complex',
+          `[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH}:(in_w-${targetW})/2:(in_h-${targetH})/2,boxblur=20:5[bg];[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]`,
+          '-map',
+          '[outv]',
+          '-map',
+          '0:a?',
+          '-c:v',
+          'libx264',
+          '-preset',
+          'veryfast',
+          '-crf',
+          '23',
+          '-pix_fmt',
+          'yuv420p',
+          '-movflags',
+          '+faststart',
+          '-c:a',
+          'aac',
+          '-b:a',
+          '128k',
+          finalClipPath
+        );
+      } else if (verticalStyle === 'letterbox') {
+        ffmpegArgs.push(
+          '-vf',
+          `scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2:black`,
+          '-map',
+          '0:v',
+          '-map',
+          '0:a?',
+          '-c:v',
+          'libx264',
+          '-preset',
+          'veryfast',
+          '-crf',
+          '23',
+          '-pix_fmt',
+          'yuv420p',
+          '-movflags',
+          '+faststart',
+          '-c:a',
+          'aac',
+          '-b:a',
+          '128k',
+          finalClipPath
+        );
+      } else {
+        // center-crop with comfortable Zoom-Out
+        const zoomFactor = Math.max(0.05, Math.min(0.45, (Number(zoomOutPercent) || 20) / 100));
+        const tightH = targetH;
+        const fitH = Math.round(targetW / (16 / 9));
+        const rawFgH = Math.round(tightH - (tightH - fitH) * zoomFactor * 1.8);
+        const safeFgH = rawFgH % 2 === 0 ? rawFgH : rawFgH - 1;
+
+        ffmpegArgs.push(
+          '-filter_complex',
+          `[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH}:(in_w-${targetW})/2:(in_h-${targetH})/2,boxblur=25:5[bg];[0:v]scale=-2:${safeFgH}[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]`,
+          '-map',
+          '[outv]',
+          '-map',
+          '0:a?',
+          '-c:v',
+          'libx264',
+          '-preset',
+          'veryfast',
+          '-crf',
+          '23',
+          '-pix_fmt',
+          'yuv420p',
+          '-movflags',
+          '+faststart',
+          '-c:a',
+          'aac',
+          '-b:a',
+          '128k',
+          finalClipPath
+        );
+      }
+    } else if (aspectRatio === '1:1') {
+      const dim = targetW;
+      const ratio = Math.max(0, Math.min(100, Number(cropPositionX) || 50)) / 100;
+      ffmpegArgs.push(
+        '-vf',
+        `scale=-2:${dim},crop=${dim}:${dim}:(in_w-${dim})*${ratio}:0`,
+        '-map',
+        '0:v',
+        '-map',
+        '0:a?',
+        '-c:v',
+        'libx264',
+        '-preset',
+        'veryfast',
+        '-crf',
+        '23',
+        '-pix_fmt',
+        'yuv420p',
+        '-movflags',
+        '+faststart',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '128k',
+        finalClipPath
+      );
+    } else {
+      ffmpegArgs.push(
+        '-vf',
+        `scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2:black`,
+        '-map',
+        '0:v',
+        '-map',
+        '0:a?',
+        '-c:v',
+        'libx264',
+        '-preset',
+        'veryfast',
+        '-crf',
+        '23',
+        '-pix_fmt',
+        'yuv420p',
+        '-movflags',
+        '+faststart',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '128k',
+        finalClipPath
+      );
+    }
+
+    await execFileAsync('/usr/bin/ffmpeg', ffmpegArgs, { timeout: 60000 });
+
+    const outputPath = fs.existsSync(finalClipPath) ? finalClipPath : sourceFilePath;
     const fileName = `driaclip_${quality}_${safeTitle}.mp4`;
 
     return { filePath: outputPath, fileName, cleanup };

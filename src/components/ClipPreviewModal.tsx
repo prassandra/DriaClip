@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { GeneratedClip, VideoSourceMetadata, AspectRatio } from '../types/driaclip';
 import { formatTimeCode } from '../services/videoClipper';
-import { interpolateTrackingCropX } from '../services/smartTracking';
 import { Language } from '../i18n/translations';
 
 interface ClipPreviewModalProps {
@@ -47,10 +46,8 @@ export const ClipPreviewModal: React.FC<ClipPreviewModalProps> = ({
   const [currentTime, setCurrentTime] = useState(boundaryStart);
   const [activeRatio, setActiveRatio] = useState<AspectRatio>(clip.aspectRatio);
 
-  // Dynamic Auto-Follow camera crop position
-  const activeCropX = (clip.verticalStyle === 'auto-track' || clip.autoTrackEnabled) && clip.trackingKeyframes && clip.trackingKeyframes.length > 0
-    ? interpolateTrackingCropX(clip.trackingKeyframes, currentTime, clip.cropPositionX ?? 50)
-    : (clip.cropPositionX ?? 50);
+  // Fixed center-crop (tengah-tengah frame)
+  const activeCropX = 50;
 
   const videoSrc = clip.videoBlobUrl || source.url;
   const isYouTubeClip = !!source.youtubeId && !clip.videoBlobUrl;
@@ -247,12 +244,12 @@ export const ClipPreviewModal: React.FC<ClipPreviewModalProps> = ({
               {/* Phone Camera Notch */}
               <div className="absolute top-2.5 left-1/2 -translate-x-1/2 h-4 w-24 rounded-full bg-black/90 z-20" />
 
-              {/* Floating Dynamic Camera Tracking / Framing Mode Pill */}
-              {clip.verticalStyle === 'auto-track' && (
+              {/* Floating Dynamic Framing Mode Pill */}
+              {(clip.verticalStyle === 'center-crop' || !clip.verticalStyle) && (
                 <div className="absolute top-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/85 border border-emerald-500/50 text-emerald-300 text-[10px] font-mono backdrop-blur-md shadow-lg">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
-                    <span>{isId ? 'Fokus Pembicara (AI)' : 'Speaker Focus (AI)'} &bull; {Math.round(activeCropX)}%</span>
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-950/85 border border-violet-500/50 text-violet-300 text-[10px] font-mono backdrop-blur-md shadow-lg">
+                    <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />
+                    <span>{isId ? `Crop Tengah (${clip.zoomOutPercent ?? 20}% Zoom-Out)` : `Center Crop (${clip.zoomOutPercent ?? 20}% Zoom-Out)`}</span>
                   </div>
                 </div>
               )}
@@ -260,7 +257,7 @@ export const ClipPreviewModal: React.FC<ClipPreviewModalProps> = ({
                 <div className="absolute top-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
                   <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-950/85 border border-sky-500/50 text-sky-300 text-[10px] font-mono backdrop-blur-md shadow-lg">
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0" />
-                    <span>{isId ? 'Latar Blur' : 'Blur Background'}</span>
+                    <span>{isId ? 'Latar Blur Penuh' : 'Full Blur Background'}</span>
                   </div>
                 </div>
               )}
@@ -310,39 +307,50 @@ export const ClipPreviewModal: React.FC<ClipPreviewModalProps> = ({
                     </div>
                   </div>
                 ) : (
-                  /* Center-Crop or Auto-Track */
-                  <div 
-                    className="relative overflow-hidden flex items-center justify-center w-full h-full"
-                    style={
-                      isSourceLandscape
-                        ? {
-                            width: '316.05%',
-                            height: '100%',
-                            position: 'absolute',
-                            top: 0,
-                            left: `${-( (activeCropX / 100) * 216.05 )}%`,
-                            transition: 'left 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)'
-                          }
-                        : {
-                            width: '100%',
-                            height: '100%'
-                          }
-                    }
-                  >
-                    <iframe
-                      key={ytIframeKey}
-                      src={`https://www.youtube.com/embed/${source.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
-                      title={clip.title}
-                      className="h-full w-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
+                  /* Center-Crop with Comfortable Zoom-Out (No Tight Fit, Zero Stretch) */
+                  <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-black">
+                    {/* Soft blurred background */}
+                    <img
+                      src={clip.thumbnailBlobUrl || source?.thumbnailUrl}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-65 pointer-events-none"
                     />
+                    <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+
+                    <div 
+                      className="relative overflow-hidden flex items-center justify-center w-full h-full"
+                      style={
+                        isSourceLandscape
+                          ? {
+                              width: '316.05%',
+                              height: '100%',
+                              position: 'absolute',
+                              top: 0,
+                              left: '-108.025%',
+                              transform: `scale(${1.0 - ((clip.zoomOutPercent ?? 20) / 100) * 0.40})`,
+                              transformOrigin: 'center center',
+                            }
+                          : {
+                              width: '100%',
+                              height: '100%'
+                            }
+                      }
+                    >
+                      <iframe
+                        key={ytIframeKey}
+                        src={`https://www.youtube.com/embed/${source.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                        title={clip.title}
+                        className="h-full w-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    </div>
                   </div>
                 )
               ) : (
                 /* Native Video File */
                 <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-black">
-                  {clip.verticalStyle === 'blur-background' && (
+                  {(clip.verticalStyle === 'blur-background' || clip.verticalStyle === 'center-crop' || !clip.verticalStyle) && (
                     <>
                       <img
                         src={clip.thumbnailBlobUrl || source?.thumbnailUrl}
@@ -373,10 +381,12 @@ export const ClipPreviewModal: React.FC<ClipPreviewModalProps> = ({
                     preload="metadata"
                     muted={isMuted}
                     style={{
-                      objectPosition: clip.verticalStyle === 'auto-track' ? `${activeCropX}% center` : 'center center',
-                      transition: 'object-position 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                      objectPosition: 'center center',
+                      transform: (clip.verticalStyle === 'center-crop' || !clip.verticalStyle)
+                        ? `scale(${1.0 - ((clip.zoomOutPercent ?? 20) / 100) * 0.40})`
+                        : undefined,
                     }}
-                    className={`cursor-pointer relative z-10 w-full h-full ${
+                    className={`cursor-pointer relative z-10 w-full h-full transition-transform ${
                       clip.verticalStyle === 'blur-background'
                         ? 'object-contain'
                         : clip.verticalStyle === 'letterbox'
