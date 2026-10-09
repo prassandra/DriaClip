@@ -514,6 +514,20 @@ export default function App() {
     }
   };
 
+  // Seamlessly attach a local video file (e.g. MP4 downloaded from browser) without wiping existing clips
+  const handleAttachVideoFile = (file: File) => {
+    const objectUrl = URL.createObjectURL(file);
+    setCurrentSource((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        file: file,
+        url: objectUrl,
+        sourceType: 'upload',
+      };
+    });
+  };
+
   // Dynamic root font size style mapping
   const fontSizeStyle = fontSize === 'small' ? 'text-[14px]' : fontSize === 'large' ? 'text-[18px]' : 'text-[16px]';
 
@@ -676,6 +690,7 @@ export default function App() {
               onSelectSampleVideo={handleSelectSampleVideo}
               lang={lang}
               onOpenYouTubeCookiesModal={() => setCookieModalOpen(true)}
+              onAttachVideoFile={handleAttachVideoFile}
             />
 
             {/* Why Choose DriaClip Key Advantages */}
@@ -698,6 +713,7 @@ export default function App() {
               onSelectSampleVideo={handleSelectSampleVideo}
               lang={lang}
               onOpenYouTubeCookiesModal={() => setCookieModalOpen(true)}
+              onAttachVideoFile={handleAttachVideoFile}
             />
           </div>
         )}

@@ -57,6 +57,44 @@ export interface RenderClipRequest {
   watermarkPosition?: 'safe-top-left' | 'safe-top-right' | 'center-top';
 }
 
+function getBaseEncoderArgs(outputPath: string): string[] {
+  return [
+    '-c:v',
+    'libx264',
+    '-preset',
+    'veryfast',
+    '-threads',
+    '0',
+    '-crf',
+    '20',
+    '-r',
+    '30',
+    '-vsync',
+    'cfr',
+    '-pix_fmt',
+    'yuv420p',
+    '-profile:v',
+    'high',
+    '-level',
+    '4.1',
+    '-avoid_negative_ts',
+    'make_zero',
+    '-movflags',
+    '+faststart',
+    '-c:a',
+    'aac',
+    '-b:a',
+    '192k',
+    '-ar',
+    '44100',
+    '-ac',
+    '2',
+    '-af',
+    'aresample=async=1000',
+    outputPath,
+  ];
+}
+
 /**
  * Generates strategic FFmpeg drawtext watermark filter.
  * Positioned in the anti-crop vertical safe zone:
@@ -406,23 +444,7 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
           '[outv]',
           '-map',
           '0:a?',
-          '-c:v',
-          'libx264',
-          '-preset',
-          'ultrafast',
-          '-threads',
-          '0',
-          '-crf',
-          '23',
-          '-pix_fmt',
-          'yuv420p',
-          '-movflags',
-          '+faststart',
-          '-c:a',
-          'aac',
-          '-b:a',
-          '128k',
-          finalClipPath
+          ...getBaseEncoderArgs(finalClipPath)
         );
       } else if (verticalStyle === 'letterbox') {
         // Crisp 16:9 centered with pure black letterbox bars top & bottom
@@ -437,23 +459,7 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
           '0:v',
           '-map',
           '0:a?',
-          '-c:v',
-          'libx264',
-          '-preset',
-          'ultrafast',
-          '-threads',
-          '0',
-          '-crf',
-          '23',
-          '-pix_fmt',
-          'yuv420p',
-          '-movflags',
-          '+faststart',
-          '-c:a',
-          'aac',
-          '-b:a',
-          '128k',
-          finalClipPath
+          ...getBaseEncoderArgs(finalClipPath)
         );
       } else {
         // center-crop: Centered at 50% with comfortable Zoom-Out and high-speed blurred backdrop
@@ -474,23 +480,7 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
           '[outv]',
           '-map',
           '0:a?',
-          '-c:v',
-          'libx264',
-          '-preset',
-          'ultrafast',
-          '-threads',
-          '0',
-          '-crf',
-          '23',
-          '-pix_fmt',
-          'yuv420p',
-          '-movflags',
-          '+faststart',
-          '-c:a',
-          'aac',
-          '-b:a',
-          '128k',
-          finalClipPath
+          ...getBaseEncoderArgs(finalClipPath)
         );
       }
     } else if (aspectRatio === '1:1') {
@@ -507,23 +497,7 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
         '0:v',
         '-map',
         '0:a?',
-        '-c:v',
-        'libx264',
-        '-preset',
-        'ultrafast',
-        '-threads',
-        '0',
-        '-crf',
-        '23',
-        '-pix_fmt',
-        'yuv420p',
-        '-movflags',
-        '+faststart',
-        '-c:a',
-        'aac',
-        '-b:a',
-        '128k',
-        finalClipPath
+        ...getBaseEncoderArgs(finalClipPath)
       );
     } else {
       // 16:9 landscape format
@@ -538,23 +512,7 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
         '0:v',
         '-map',
         '0:a?',
-        '-c:v',
-        'libx264',
-        '-preset',
-        'ultrafast',
-        '-threads',
-        '0',
-        '-crf',
-        '23',
-        '-pix_fmt',
-        'yuv420p',
-        '-movflags',
-        '+faststart',
-        '-c:a',
-        'aac',
-        '-b:a',
-        '128k',
-        finalClipPath
+        ...getBaseEncoderArgs(finalClipPath)
       );
     }
 
@@ -631,13 +589,16 @@ export async function handleRenderLocalClip(
 
     const ffmpegArgs: string[] = [
       '-y',
-      '-sn',
       '-ss',
       String(safeStart),
-      '-t',
-      String(safeDuration),
+      '-accurate_seek',
       '-i',
       sourceFilePath,
+      '-t',
+      String(safeDuration),
+      '-sn',
+      '-avoid_negative_ts',
+      'make_zero',
     ];
 
     if (aspectRatio === '9:16') {
@@ -653,23 +614,7 @@ export async function handleRenderLocalClip(
           '[outv]',
           '-map',
           '0:a?',
-          '-c:v',
-          'libx264',
-          '-preset',
-          'ultrafast',
-          '-threads',
-          '0',
-          '-crf',
-          '23',
-          '-pix_fmt',
-          'yuv420p',
-          '-movflags',
-          '+faststart',
-          '-c:a',
-          'aac',
-          '-b:a',
-          '128k',
-          finalClipPath
+          ...getBaseEncoderArgs(finalClipPath)
         );
       } else if (verticalStyle === 'letterbox') {
         const vfStr = wmFilter
@@ -683,23 +628,7 @@ export async function handleRenderLocalClip(
           '0:v',
           '-map',
           '0:a?',
-          '-c:v',
-          'libx264',
-          '-preset',
-          'ultrafast',
-          '-threads',
-          '0',
-          '-crf',
-          '23',
-          '-pix_fmt',
-          'yuv420p',
-          '-movflags',
-          '+faststart',
-          '-c:a',
-          'aac',
-          '-b:a',
-          '128k',
-          finalClipPath
+          ...getBaseEncoderArgs(finalClipPath)
         );
       } else {
         // center-crop with comfortable Zoom-Out
@@ -720,23 +649,7 @@ export async function handleRenderLocalClip(
           '[outv]',
           '-map',
           '0:a?',
-          '-c:v',
-          'libx264',
-          '-preset',
-          'ultrafast',
-          '-threads',
-          '0',
-          '-crf',
-          '23',
-          '-pix_fmt',
-          'yuv420p',
-          '-movflags',
-          '+faststart',
-          '-c:a',
-          'aac',
-          '-b:a',
-          '128k',
-          finalClipPath
+          ...getBaseEncoderArgs(finalClipPath)
         );
       }
     } else if (aspectRatio === '1:1') {
@@ -753,23 +666,7 @@ export async function handleRenderLocalClip(
         '0:v',
         '-map',
         '0:a?',
-        '-c:v',
-        'libx264',
-        '-preset',
-        'ultrafast',
-        '-threads',
-        '0',
-        '-crf',
-        '23',
-        '-pix_fmt',
-        'yuv420p',
-        '-movflags',
-        '+faststart',
-        '-c:a',
-        'aac',
-        '-b:a',
-        '128k',
-        finalClipPath
+        ...getBaseEncoderArgs(finalClipPath)
       );
     } else {
       const vfStr = wmFilter
@@ -783,23 +680,7 @@ export async function handleRenderLocalClip(
         '0:v',
         '-map',
         '0:a?',
-        '-c:v',
-        'libx264',
-        '-preset',
-        'ultrafast',
-        '-threads',
-        '0',
-        '-crf',
-        '23',
-        '-pix_fmt',
-        'yuv420p',
-        '-movflags',
-        '+faststart',
-        '-c:a',
-        'aac',
-        '-b:a',
-        '128k',
-        finalClipPath
+        ...getBaseEncoderArgs(finalClipPath)
       );
     }
 

@@ -243,12 +243,25 @@ export const YouTubeCookieModal: React.FC<YouTubeCookieModalProps> = ({
               <span>{isId ? 'Cara Mendapatkan Cookie YouTube (Hanya 1 Menit)' : 'How to Export YouTube Cookies (1 Minute)'}</span>
             </span>
 
-            <ol className="list-decimal list-inside space-y-1.5 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+            {/* Critical Note for Users */}
+            <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <strong className="block text-[11px] uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                  {isId ? 'Catatan Penting Agar Tidak Salah:' : 'Important Note:'}
+                </strong>
+                {isId 
+                  ? 'Jangan buka ekstensi saat berada di tab Chrome Web Store! Klik tab video YouTube Anda terlebih dahulu, baru buka ekstensi dan klik tombol [Copy].'
+                  : 'Do not open the extension on the Chrome Web Store page! Switch to your YouTube video tab first, then open the extension and click [Copy].'}
+              </div>
+            </div>
+
+            <ol className="list-decimal list-inside space-y-2 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
               <li>
                 <span className="font-medium text-slate-900 dark:text-slate-200">
-                  {isId ? 'Pasang ekstensi browser:' : 'Install browser extension:'}
+                  {isId ? '1. Pasang ekstensi:' : '1. Install extension:'}
                 </span>{' '}
-                {isId ? 'Gunakan ekstensi gratis seperti ' : 'Use a free extension like '}
+                {isId ? 'Pasang ' : 'Install '}
                 <a 
                   href="https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc" 
                   target="_blank" 
@@ -258,31 +271,35 @@ export const YouTubeCookieModal: React.FC<YouTubeCookieModalProps> = ({
                   <span>Get cookies.txt LOCALLY</span>
                   <ExternalLink className="h-3 w-3" />
                 </a>{' '}
-                (Chrome / Edge / Brave / Firefox).
+                {isId ? '(sudah terpasang di browser Anda).' : '(free browser extension).'}
               </li>
               <li>
                 <span className="font-medium text-slate-900 dark:text-slate-200">
-                  {isId ? 'Buka YouTube:' : 'Open YouTube:'}
-                </span>{' '}
-                {isId ? 'Kunjungi ' : 'Visit '}
-                <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" className="font-bold text-red-500 hover:underline">
-                  youtube.com
-                </a>{' '}
-                {isId ? '(pastikan Anda sudah login).' : '(make sure you are signed in).'}
-              </li>
-              <li>
-                <span className="font-medium text-slate-900 dark:text-slate-200">
-                  {isId ? 'Ekspor cookie:' : 'Export cookies:'}
+                  {isId ? '2. Buka Tab YouTube Anda:' : '2. Open your YouTube Tab:'}
                 </span>{' '}
                 {isId 
-                  ? 'Klik ikon ekstensi pada tab YouTube, lalu klik "Copy" atau "Export" (format standar Netscape).'
-                  : 'Click the extension icon on the YouTube tab, then click "Copy" or "Export" (Netscape format).'}
+                  ? 'Klik tab browser yang sedang memutar video YouTube (misalnya video yang ingin Anda potong).'
+                  : 'Click the browser tab currently playing the YouTube video.'}
               </li>
               <li>
                 <span className="font-medium text-slate-900 dark:text-slate-200">
-                  {isId ? 'Tempelkan di sini:' : 'Paste below:'}
+                  {isId ? '3. Klik Ikon Ekstensi 🍪 & Klik Tombol [Copy]:' : '3. Click Extension 🍪 & Click [Copy]:'}
                 </span>{' '}
-                {isId ? 'Tempelkan teks atau unggah file cookies.txt lalu klik "Simpan Cookie".' : 'Paste the text or upload the file and click "Save Cookies".'}
+                {isId 
+                  ? 'Di tab YouTube tersebut, klik ikon kue 🍪 di pojok kanan atas browser, lalu klik tombol biru '
+                  : 'On that YouTube tab, click the cookie icon 🍪 and click the blue '}
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold font-mono text-[11px]">
+                  <Copy className="h-3 w-3" /> Copy
+                </span>{' '}
+                {isId ? '(sebelah kanan tombol Export As).' : '(next to Export As).'}
+              </li>
+              <li>
+                <span className="font-medium text-slate-900 dark:text-slate-200">
+                  {isId ? '4. Tempel di DriaClip:' : '4. Paste in DriaClip:'}
+                </span>{' '}
+                {isId 
+                  ? 'Kembali ke tab DriaClip ini, klik di kotak bawah, tekan Ctrl + V (Paste), lalu klik "Simpan & Aktifkan Cookie".'
+                  : 'Return to this DriaClip tab, click in the box below, press Ctrl + V (Paste), then click "Save & Enable Cookies".'}
               </li>
             </ol>
           </div>

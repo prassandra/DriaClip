@@ -48,6 +48,7 @@ interface ClipDashboardProps {
   onSelectSampleVideo?: (sample: any) => void;
   lang: Language;
   onOpenYouTubeCookiesModal?: () => void;
+  onAttachVideoFile?: (file: File) => void;
 }
 
 interface ClipCardItemProps {
@@ -828,6 +829,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
   onSelectSampleVideo,
   lang,
   onOpenYouTubeCookiesModal,
+  onAttachVideoFile,
 }) => {
   const t = TRANSLATIONS[lang];
   const isId = lang === 'id';
@@ -876,10 +878,15 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
         downloadClipAsMp4(clip, undefined, 'mp4');
         return;
       } catch (err: any) {
-        console.error('Server render error:', err);
-        setDownloadError(
-          err?.message || (isId ? 'Gagal memproses klip video dari server. Periksa koneksi atau coba durasi klip yang lebih pendek.' : 'Failed to process clip from server.')
-        );
+        if (err?.code === 'YOUTUBE_BOT_PROTECTION' || err?.message?.includes('YOUTUBE_BOT_PROTECTION')) {
+          console.warn('[DriaClip] Notice: YouTube bot challenge encountered on server request.');
+          setDownloadError(err.message || 'YouTube memerlukan verifikasi bot pada server cloud.');
+        } else {
+          console.error('Server render error:', err);
+          setDownloadError(
+            err?.message || (isId ? 'Gagal memproses klip video dari server. Periksa koneksi atau coba durasi klip yang lebih pendek.' : 'Failed to process clip from server.')
+          );
+        }
       } finally {
         setRenderingClip(null);
       }
@@ -896,8 +903,8 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
           duration: clip.duration,
         });
 
-        // Try high-speed server rendering if file is under 25MB (Cloud Run limit)
-        if (source.file && source.file.size <= 25 * 1024 * 1024) {
+        // Try high-speed server FFmpeg rendering first (supports chunked upload for any file size)
+        if (source.file) {
           try {
             const serverLocalResult = await downloadServerRenderedLocalClip(clip, source.file);
             clip.videoBlobUrl = serverLocalResult.url;
@@ -1173,6 +1180,54 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
                 </span>
               </button>
             </div>
+
+            {/* Quick Video Attachment to preserve clips without starting over */}
+            {onAttachVideoFile && (
+              <div className="p-3.5 rounded-xl border border-dashed border-violet-400/80 dark:border-violet-700 bg-white/90 dark:bg-slate-900/90 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 shrink-0">
+                    <FileVideo className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-xs text-slate-900 dark:text-slate-100 block">
+                      {isId ? 'Sudah mengunduh video di browser? Pasang di sini:' : 'Already downloaded the video? Attach here:'}
+                    </span>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {isId 
+                        ? 'Sematkan file video MP4 — semua klip yang sudah dibuat langsung siap diunduh tanpa ulang!' 
+                        : 'Attach the MP4 file — all generated clips will be ready to download immediately!'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                  <a
+                    href="https://save.driacom.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-violet-600 text-xs font-semibold"
+                  >
+                    <span>DriaSave</span>
+                    <ExternalLink className="h-3 w-3 opacity-60" />
+                  </a>
+
+                  <label className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold cursor-pointer transition-colors shadow-xs">
+                    <span>{isId ? 'Pilih File MP4' : 'Select MP4'}</span>
+                    <input
+                      type="file"
+                      accept="video/*,.mp4,.webm,.mov"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          onAttachVideoFile(e.target.files[0]);
+                          setDownloadError(null);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

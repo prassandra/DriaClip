@@ -27,6 +27,14 @@ app.post('/api/render-clip', async (req, res) => {
       cleanup();
     });
   } catch (err: any) {
+    if (err?.message?.includes('YOUTUBE_BOT_PROTECTION')) {
+      console.warn('[DriaClip] Notice: YouTube bot verification required for cloud server request.');
+      return res.status(403).json({ 
+        code: 'YOUTUBE_BOT_PROTECTION',
+        error: err.message, 
+        details: err.message 
+      });
+    }
     console.error('Error rendering clip:', err);
     res.status(500).json({ 
       error: err?.message || 'Terjadi kesalahan saat memproses video', 
@@ -84,6 +92,69 @@ app.post('/api/render-local-clip', (req, res) => {
     } catch {}
     res.status(500).json({ error: 'Gagal menerima stream video' });
   });
+});
+
+/**
+ * Route to receive chunked uploads for large video files (> 25MB)
+ * Bypasses cloud proxy body limits completely.
+ */
+app.post('/api/upload-chunk', (req, res) => {
+  const uploadId = (req.headers['x-upload-id'] as string) || `chunk_${Date.now()}`;
+  const safeUploadId = uploadId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 50);
+  const chunkIndex = parseInt((req.headers['x-chunk-index'] as string) || '0', 10);
+  const totalChunks = parseInt((req.headers['x-total-chunks'] as string) || '1', 10);
+
+  const targetPath = path.join(UPLOAD_TMP_DIR, `${safeUploadId}.mp4`);
+  const writeStream = fs.createWriteStream(targetPath, { flags: chunkIndex === 0 ? 'w' : 'a' });
+
+  req.pipe(writeStream);
+
+  writeStream.on('finish', () => {
+    res.json({
+      success: true,
+      uploadId: safeUploadId,
+      chunkIndex,
+      isComplete: chunkIndex + 1 >= totalChunks,
+    });
+  });
+
+  writeStream.on('error', (err) => {
+    console.error('Upload chunk error:', err);
+    res.status(500).json({ error: 'Gagal menyimpan potongan video' });
+  });
+});
+
+/**
+ * Route to render video previously uploaded via chunked upload
+ */
+app.post('/api/render-chunked-clip', async (req, res) => {
+  try {
+    const { uploadId, ...options } = req.body;
+    if (!uploadId) {
+      return res.status(400).json({ error: 'Parameter uploadId wajib disertakan' });
+    }
+    const safeUploadId = String(uploadId).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 50);
+    const targetPath = path.join(UPLOAD_TMP_DIR, `${safeUploadId}.mp4`);
+
+    if (!fs.existsSync(targetPath)) {
+      return res.status(404).json({ error: 'File video tidak ditemukan di server' });
+    }
+
+    const { filePath, fileName, cleanup } = await handleRenderLocalClip(targetPath, options);
+
+    res.download(filePath, fileName, () => {
+      try {
+        if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
+      } catch {}
+      cleanup();
+    });
+  } catch (err: any) {
+    console.error('Error rendering chunked clip:', err);
+    res.status(500).json({
+      error: 'Gagal memproses video klip',
+      details: err?.message || String(err),
+    });
+  }
 });
 
 const COOKIES_PATH = path.resolve(process.cwd(), 'cookies.txt');
