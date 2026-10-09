@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Check, Clock, Edit3, Sparkles, MoveHorizontal } from 'lucide-react';
+import { X, Check, Clock, Edit3, Sparkles, MoveHorizontal, ShieldCheck } from 'lucide-react';
 import { GeneratedClip, VideoSourceMetadata } from '../types/driaclip';
 import { formatTimeCode } from '../services/videoClipper';
 import { Language } from '../i18n/translations';
@@ -28,6 +28,10 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
   const [hookText, setHookText] = useState(clip.hookText);
   const [startTime, setStartTime] = useState(clip.startTime);
   const [endTime, setEndTime] = useState(clip.endTime);
+  const [watermark, setWatermark] = useState(clip.watermark !== false);
+  const [watermarkPosition, setWatermarkPosition] = useState<'safe-top-left' | 'safe-top-right' | 'center-top'>(
+    clip.watermarkPosition || 'safe-top-left'
+  );
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const duration = Math.max(1, endTime - startTime);
@@ -58,6 +62,8 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
       startTime: Math.round(startTime),
       endTime: Math.round(endTime),
       duration: Math.round(endTime - startTime),
+      watermark,
+      watermarkPosition,
     });
     onClose();
   };
@@ -203,6 +209,41 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
           )}
 
 
+
+          {/* Watermark Protection Option */}
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-neutral-200 flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-violet-400" />
+                <span>{isId ? 'Watermark DriaClip (Anti-Crop)' : 'DriaClip Watermark (Anti-Crop)'}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setWatermark(!watermark)}
+                className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+                  watermark
+                    ? 'bg-emerald-950/70 text-emerald-300 border-emerald-500/50'
+                    : 'bg-neutral-800 text-neutral-400 border-neutral-700'
+                }`}
+              >
+                {watermark ? (isId ? 'Aktif' : 'Active') : (isId ? 'Nonaktif' : 'Off')}
+              </button>
+            </div>
+            {watermark && (
+              <div className="flex items-center justify-between pt-1 text-[11px] border-t border-neutral-800/80">
+                <span className="text-neutral-400">{isId ? 'Posisi Safe-Zone:' : 'Safe-Zone Position:'}</span>
+                <select
+                  value={watermarkPosition}
+                  onChange={(e) => setWatermarkPosition(e.target.value as any)}
+                  className="rounded-lg bg-neutral-950 border border-neutral-700 px-2.5 py-1 text-xs text-white focus:border-violet-500 focus:outline-none cursor-pointer"
+                >
+                  <option value="safe-top-left">{isId ? 'Kiri Atas (Rekomendasi)' : 'Upper-Left (Recommended)'}</option>
+                  <option value="safe-top-right">{isId ? 'Kanan Atas' : 'Upper-Right'}</option>
+                  <option value="center-top">{isId ? 'Tengah Atas' : 'Center-Top'}</option>
+                </select>
+              </div>
+            )}
+          </div>
 
           {/* Error Message */}
           {errorMsg && (

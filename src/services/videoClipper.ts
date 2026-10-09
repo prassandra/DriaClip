@@ -1,6 +1,134 @@
 import { AspectRatio, VerticalStyle, GeneratedClip, ExportQuality, TrackingKeyframe } from '../types/driaclip';
 
 /**
+ * Draws a distinct, tamper-resistant DriaClip watermark badge onto a canvas frame.
+ * Positioned in the anti-crop vertical safe zone:
+ * - Upper-Left Safe Zone (default): sits below top status bar/search (y > 70px),
+ *   completely out of the way of right-side interaction buttons (Like/Comment/Share)
+ *   and bottom subtitles/captions.
+ * - Prevents crop-theft: any attempt to crop the top-left will chop off the speaker's face.
+ */
+export function drawDriaClipWatermark(
+  ctx: CanvasRenderingContext2D,
+  targetW: number,
+  targetH: number,
+  aspectRatio: AspectRatio = '9:16',
+  position: 'safe-top-left' | 'safe-top-right' | 'center-top' = 'safe-top-left'
+): void {
+  ctx.save();
+
+  const fontSize = Math.max(15, Math.round(targetW * 0.033));
+  ctx.font = `bold ${fontSize}px "Plus Jakarta Sans", system-ui, -apple-system, sans-serif`;
+
+  const brandText = 'DriaClip';
+  const textMetrics = ctx.measureText(brandText);
+  const textW = textMetrics.width;
+
+  const pillPadX = Math.round(fontSize * 0.85);
+  const pillPadY = Math.round(fontSize * 0.45);
+  const dotRadius = Math.max(3, Math.round(fontSize * 0.22));
+  const dotSpacing = Math.round(fontSize * 0.52);
+
+  const badgeW = pillPadX * 2 + dotRadius * 2 + dotSpacing + textW;
+  const badgeH = fontSize + pillPadY * 2;
+  const badgeRadius = Math.round(badgeH / 2);
+
+  let badgeX = 36;
+  let badgeY = 88;
+
+  if (aspectRatio === '9:16') {
+    const safeTop = Math.round(targetH * 0.068);
+    const safeMarginX = Math.round(targetW * 0.05);
+
+    if (position === 'safe-top-right') {
+      badgeX = targetW - badgeW - safeMarginX;
+      badgeY = safeTop;
+    } else if (position === 'center-top') {
+      badgeX = Math.round((targetW - badgeW) / 2);
+      badgeY = Math.round(targetH * 0.062);
+    } else {
+      // safe-top-left (Default & Best anti-crop protection)
+      badgeX = safeMarginX;
+      badgeY = safeTop;
+    }
+  } else if (aspectRatio === '1:1') {
+    const margin = Math.round(targetW * 0.04);
+    if (position === 'safe-top-right') {
+      badgeX = targetW - badgeW - margin;
+      badgeY = margin;
+    } else if (position === 'center-top') {
+      badgeX = Math.round((targetW - badgeW) / 2);
+      badgeY = margin;
+    } else {
+      badgeX = margin;
+      badgeY = margin;
+    }
+  } else {
+    // 16:9
+    const marginX = Math.round(targetW * 0.035);
+    const marginY = Math.round(targetH * 0.05);
+    if (position === 'safe-top-right') {
+      badgeX = targetW - badgeW - marginX;
+      badgeY = marginY;
+    } else if (position === 'center-top') {
+      badgeX = Math.round((targetW - badgeW) / 2);
+      badgeY = marginY;
+    } else {
+      badgeX = marginX;
+      badgeY = marginY;
+    }
+  }
+
+  // 1. Drop shadow for badge
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 2;
+
+  // 2. Pill background
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+  ctx.beginPath();
+  ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeRadius);
+  ctx.fill();
+
+  // 3. Subtle purple glowing border
+  ctx.shadowColor = 'rgba(168, 85, 247, 0.45)';
+  ctx.shadowBlur = 5;
+  ctx.strokeStyle = 'rgba(168, 85, 247, 0.75)';
+  ctx.lineWidth = Math.max(1, Math.round(fontSize * 0.065));
+  ctx.stroke();
+
+  // 4. Dot indicator
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+  ctx.shadowBlur = 3;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 1;
+
+  const dotCenterX = badgeX + pillPadX + dotRadius;
+  const dotCenterY = badgeY + badgeH / 2;
+
+  ctx.fillStyle = '#c084fc'; // Violet-400
+  ctx.beginPath();
+  ctx.arc(dotCenterX, dotCenterY, dotRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(dotCenterX, dotCenterY, dotRadius * 0.45, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 5. White brand text
+  ctx.fillStyle = '#f8fafc';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const textX = dotCenterX + dotRadius + dotSpacing;
+  const textY = badgeY + badgeH / 2 + 0.5;
+  ctx.fillText(brandText, textX, textY);
+
+  ctx.restore();
+}
+
+/**
  * Calculates the exact second to capture the starting thumbnail frame for a clip.
  * Requirement:
  * - Clip 1 (e.g. 00:00 - 00:15): starts at 0s -> thumbnail at second 00:01 (1s)
@@ -620,7 +748,9 @@ export async function renderClipBlob(
   onProgress?: (percent: number) => void,
   cropPositionX: number = 50,
   trackingKeyframes?: TrackingKeyframe[],
-  zoomOutPercent: number = 20
+  zoomOutPercent: number = 20,
+  watermark: boolean = true,
+  watermarkPosition: 'safe-top-left' | 'safe-top-right' | 'center-top' = 'safe-top-left'
 ): Promise<{ blob: Blob; url: string; size: number; extension: 'mp4' | 'webm' }> {
   return new Promise(async (resolve, reject) => {
     if (!videoUrl || videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
@@ -911,6 +1041,11 @@ export async function renderClipBlob(
           ctx.drawImage(video, 0, 0, targetW, targetH);
         }
 
+        // Apply strategic DriaClip anti-crop watermark directly onto canvas frame
+        if (watermark) {
+          drawDriaClipWatermark(ctx, targetW, targetH, aspectRatio, watermarkPosition);
+        }
+
         // Check if reached clip end time (or video ended)
         if (curTime >= endTime - 0.05 || video.ended) {
           finishRecording();
@@ -1033,6 +1168,8 @@ export async function downloadServerRenderedClip(
       trackingKeyframes: clip.trackingKeyframes,
       quality: clip.exportQuality || '1080p',
       title: clip.title,
+      watermark: clip.watermark !== false,
+      watermarkPosition: clip.watermarkPosition || 'safe-top-left',
     }),
   });
 
@@ -1068,6 +1205,8 @@ export async function downloadServerRenderedLocalClip(
     zoomOutPercent: String(clip.zoomOutPercent ?? 20),
     quality: clip.exportQuality || '720p',
     title: clip.title || 'clip',
+    watermark: String(clip.watermark !== false),
+    watermarkPosition: clip.watermarkPosition || 'safe-top-left',
   });
 
   const res = await fetch(`/api/render-local-clip?${params.toString()}`, {

@@ -56,6 +56,8 @@ app.post('/api/render-local-clip', (req, res) => {
         zoomOutPercent: Number(req.query.zoomOutPercent) || 20,
         quality: (req.query.quality as any) || '720p',
         title: (req.query.title as string) || 'clip',
+        watermark: req.query.watermark !== 'false',
+        watermarkPosition: (req.query.watermarkPosition as any) || 'safe-top-left',
       });
 
       res.download(filePath, fileName, () => {

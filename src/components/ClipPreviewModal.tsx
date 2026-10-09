@@ -284,11 +284,19 @@ export const ClipPreviewModal: React.FC<ClipPreviewModalProps> = ({
                     <div className="relative z-10 w-full aspect-video shadow-2xl border-y border-white/10">
                       <iframe
                         key={ytIframeKey}
-                        src={`https://www.youtube.com/embed/${source.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                        src={`https://www.youtube.com/embed/${source.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&cc_load_policy=0&cc_lang_pref=none&iv_load_policy=3&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
                         title={clip.title}
                         className="w-full h-full border-0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         allowFullScreen
+                        onLoad={(e) => {
+                          try {
+                            const cw = e.currentTarget.contentWindow;
+                            cw?.postMessage(JSON.stringify({ event: 'command', func: 'unloadModule', args: ['captions'] }), '*');
+                            cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['captions', 'track', {}] }), '*');
+                            cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['cc', 'track', {}] }), '*');
+                          } catch {}
+                        }}
                       />
                     </div>
                   </div>
@@ -298,11 +306,19 @@ export const ClipPreviewModal: React.FC<ClipPreviewModalProps> = ({
                     <div className="relative z-10 w-full aspect-video shadow-2xl">
                       <iframe
                         key={ytIframeKey}
-                        src={`https://www.youtube.com/embed/${source.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                        src={`https://www.youtube.com/embed/${source.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&cc_load_policy=0&cc_lang_pref=none&iv_load_policy=3&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
                         title={clip.title}
                         className="w-full h-full border-0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         allowFullScreen
+                        onLoad={(e) => {
+                          try {
+                            const cw = e.currentTarget.contentWindow;
+                            cw?.postMessage(JSON.stringify({ event: 'command', func: 'unloadModule', args: ['captions'] }), '*');
+                            cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['captions', 'track', {}] }), '*');
+                            cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['cc', 'track', {}] }), '*');
+                          } catch {}
+                        }}
                       />
                     </div>
                   </div>
@@ -338,11 +354,19 @@ export const ClipPreviewModal: React.FC<ClipPreviewModalProps> = ({
                     >
                       <iframe
                         key={ytIframeKey}
-                        src={`https://www.youtube.com/embed/${source.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                        src={`https://www.youtube.com/embed/${source.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&cc_load_policy=0&cc_lang_pref=none&iv_load_policy=3&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
                         title={clip.title}
                         className="h-full w-full border-0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         allowFullScreen
+                        onLoad={(e) => {
+                          try {
+                            const cw = e.currentTarget.contentWindow;
+                            cw?.postMessage(JSON.stringify({ event: 'command', func: 'unloadModule', args: ['captions'] }), '*');
+                            cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['captions', 'track', {}] }), '*');
+                            cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['cc', 'track', {}] }), '*');
+                          } catch {}
+                        }}
                       />
                     </div>
                   </div>
@@ -395,6 +419,27 @@ export const ClipPreviewModal: React.FC<ClipPreviewModalProps> = ({
                     }`}
                     onClick={togglePlay}
                   />
+                </div>
+              )}
+
+              {/* Strategic DriaClip Watermark Badge (Anti-Crop Protected) */}
+              {clip.watermark !== false && (
+                <div 
+                  className={`absolute z-25 pointer-events-none drop-shadow-md transition-all ${
+                    clip.watermarkPosition === 'safe-top-right'
+                      ? 'top-14 right-3'
+                      : clip.watermarkPosition === 'center-top'
+                      ? 'top-14 left-1/2 -translate-x-1/2'
+                      : 'top-14 left-3'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950/80 border border-violet-500/70 text-white text-[11px] font-bold shadow-lg backdrop-blur-xs ring-1 ring-violet-500/20">
+                    <span className="relative flex h-2 w-2 items-center justify-center">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-violet-400"></span>
+                    </span>
+                    <span className="tracking-wide">DriaClip</span>
+                  </div>
                 </div>
               )}
 
@@ -458,11 +503,19 @@ export const ClipPreviewModal: React.FC<ClipPreviewModalProps> = ({
               {isYouTubeClip ? (
                 <iframe
                   key={ytIframeKey}
-                  src={`https://www.youtube.com/embed/${source.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.round(clip.startTime + ytOffset)}&end=${Math.round(clip.endTime)}`}
+                  src={`https://www.youtube.com/embed/${source.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&cc_load_policy=0&cc_lang_pref=none&iv_load_policy=3&start=${Math.round(clip.startTime + ytOffset)}&end=${Math.round(clip.endTime)}`}
                   title={clip.title}
                   className="h-full w-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
+                  onLoad={(e) => {
+                    try {
+                      const cw = e.currentTarget.contentWindow;
+                      cw?.postMessage(JSON.stringify({ event: 'command', func: 'unloadModule', args: ['captions'] }), '*');
+                      cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['captions', 'track', {}] }), '*');
+                      cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['cc', 'track', {}] }), '*');
+                    } catch {}
+                  }}
                 />
               ) : (
                 <video
@@ -486,6 +539,27 @@ export const ClipPreviewModal: React.FC<ClipPreviewModalProps> = ({
                   onClick={togglePlay}
                 />
               )}
+              {/* Strategic DriaClip Watermark Badge for Landscape/Square */}
+              {clip.watermark !== false && (
+                <div 
+                  className={`absolute z-25 pointer-events-none drop-shadow-md transition-all ${
+                    clip.watermarkPosition === 'safe-top-right'
+                      ? 'top-4 right-4'
+                      : clip.watermarkPosition === 'center-top'
+                      ? 'top-4 left-1/2 -translate-x-1/2'
+                      : 'top-4 left-4'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950/80 border border-violet-500/70 text-white text-[11px] font-bold shadow-lg backdrop-blur-xs ring-1 ring-violet-500/20">
+                    <span className="relative flex h-2 w-2 items-center justify-center">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-violet-400"></span>
+                    </span>
+                    <span className="tracking-wide">DriaClip</span>
+                  </div>
+                </div>
+              )}
+
               {!isPlaying && !isYouTubeClip && (
                 <button
                   onClick={togglePlay}

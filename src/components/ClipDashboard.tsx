@@ -334,11 +334,19 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
                   <div className="relative z-10 w-full aspect-video shadow-2xl">
                     <iframe
                       key={ytIframeKey}
-                      src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                      src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&cc_load_policy=0&cc_lang_pref=none&iv_load_policy=3&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
                       title={clip.title}
                       className="w-full h-full border-0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
+                      onLoad={(e) => {
+                        try {
+                          const cw = e.currentTarget.contentWindow;
+                          cw?.postMessage(JSON.stringify({ event: 'command', func: 'unloadModule', args: ['captions'] }), '*');
+                          cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['captions', 'track', {}] }), '*');
+                          cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['cc', 'track', {}] }), '*');
+                        } catch {}
+                      }}
                     />
                   </div>
                   <button
@@ -359,11 +367,19 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
                   <div className="relative z-10 w-full aspect-video shadow-2xl">
                     <iframe
                       key={ytIframeKey}
-                      src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                      src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&cc_load_policy=0&cc_lang_pref=none&iv_load_policy=3&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
                       title={clip.title}
                       className="w-full h-full border-0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
+                      onLoad={(e) => {
+                        try {
+                          const cw = e.currentTarget.contentWindow;
+                          cw?.postMessage(JSON.stringify({ event: 'command', func: 'unloadModule', args: ['captions'] }), '*');
+                          cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['captions', 'track', {}] }), '*');
+                          cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['cc', 'track', {}] }), '*');
+                        } catch {}
+                      }}
                     />
                   </div>
                   <button
@@ -420,11 +436,19 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
                   >
                     <iframe
                       key={ytIframeKey}
-                      src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                      src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&cc_load_policy=0&cc_lang_pref=none&iv_load_policy=3&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
                       title={clip.title}
                       className="w-full h-full border-0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
+                      onLoad={(e) => {
+                        try {
+                          const cw = e.currentTarget.contentWindow;
+                          cw?.postMessage(JSON.stringify({ event: 'command', func: 'unloadModule', args: ['captions'] }), '*');
+                          cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['captions', 'track', {}] }), '*');
+                          cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['cc', 'track', {}] }), '*');
+                        } catch {}
+                      }}
                     />
                   </div>
                   <button
@@ -538,6 +562,14 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
               <div className="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/80 backdrop-blur-xs border border-violet-500/50 text-[11px] font-mono font-bold text-violet-300 shadow-md pointer-events-none">
                 <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
                 <span>{isId ? 'Mulai' : 'Start'}: {formatTimeCode(clip.startTime)}</span>
+              </div>
+            )}
+
+            {/* Strategic DriaClip Watermark Indicator */}
+            {clip.watermark !== false && !isPlaying && (
+              <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-xs border border-violet-500/50 text-[10px] font-bold text-white shadow-md pointer-events-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                <span>DriaClip</span>
               </div>
             )}
 
@@ -883,7 +915,9 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
           },
           clip.cropPositionX ?? 50,
           clip.trackingKeyframes,
-          clip.zoomOutPercent ?? 20
+          clip.zoomOutPercent ?? 20,
+          clip.watermark !== false,
+          clip.watermarkPosition || 'safe-top-left'
         );
 
         clip.videoBlobUrl = result.url;
@@ -1022,11 +1056,24 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
       </div>
 
       {downloadError && (
-        <div className="flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-600 dark:text-red-400">
+        <div className="flex flex-col sm:flex-row items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-600 dark:text-red-400">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <span className="font-semibold block">{isId ? 'Gagal Mengunduh Klip:' : 'Failed to Download Clip:'}</span>
-            <p className="mt-0.5 text-slate-700 dark:text-slate-300">{downloadError}</p>
+          <div className="flex-1 space-y-2">
+            <div>
+              <span className="font-semibold block">{isId ? 'Gagal Mengunduh Klip:' : 'Failed to Download Clip:'}</span>
+              <p className="mt-0.5 text-slate-700 dark:text-slate-300">{downloadError}</p>
+            </div>
+            {downloadError.includes('YOUTUBE_BOT_PROTECTION') && (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <a
+                  href="#input-source"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold text-[11px] shadow-xs cursor-pointer transition-colors"
+                >
+                  <FileVideo className="h-3.5 w-3.5" />
+                  <span>{isId ? 'Unggah File Video (MP4/WebM) Langsung' : 'Upload Video File (MP4/WebM)'}</span>
+                </a>
+              </div>
+            )}
           </div>
           <button 
             type="button"

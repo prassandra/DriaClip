@@ -363,11 +363,19 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
           <iframe
             id="main-timeline-yt"
             key={youtubeId}
-            src={`https://www.youtube-nocookie.com/embed/${youtubeId}?enablejsapi=1&rel=0&playsinline=1`}
+            src={`https://www.youtube-nocookie.com/embed/${youtubeId}?enablejsapi=1&rel=0&playsinline=1&cc_load_policy=0&cc_lang_pref=none&iv_load_policy=3`}
             title={source.title}
             className="w-full h-full border-0 rounded-2xl"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
+            onLoad={(e) => {
+              try {
+                const cw = e.currentTarget.contentWindow;
+                cw?.postMessage(JSON.stringify({ event: 'command', func: 'unloadModule', args: ['captions'] }), '*');
+                cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['captions', 'track', {}] }), '*');
+                cw?.postMessage(JSON.stringify({ event: 'command', func: 'setOption', args: ['cc', 'track', {}] }), '*');
+              } catch {}
+            }}
           />
         ) : (
           /* HTML5 Video Player for Offline Uploads or Direct MP4/WebM URLs */

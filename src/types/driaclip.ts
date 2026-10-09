@@ -51,6 +51,8 @@ export interface ClipConfig {
   minSpeechEnergy: number; // 0 to 100
   cropPositionX?: number; // 0 to 100 (0 = Left, 50 = Center, 100 = Right)
   autoTrackSpeaker?: boolean; // automatically follow active speaker
+  watermark?: boolean; // Secure DriaClip watermark on output clips (default: true)
+  watermarkPosition?: 'safe-top-left' | 'safe-top-right' | 'center-top'; // Strategic anti-crop placement
 }
 
 export interface GeneratedClip {
@@ -67,6 +69,8 @@ export interface GeneratedClip {
   zoomOutPercent?: number; // e.g. 20%
   trackingKeyframes?: TrackingKeyframe[]; // Dynamic camera path following the speaker
   autoTrackEnabled?: boolean;
+  watermark?: boolean;
+  watermarkPosition?: 'safe-top-left' | 'safe-top-right' | 'center-top';
   exportQuality: ExportQuality;
   status: 'ready' | 'processing' | 'failed';
   videoBlobUrl?: string;

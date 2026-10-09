@@ -9,7 +9,9 @@ import {
   ArrowRight,
   Sliders,
   MoveHorizontal,
-  Info
+  Info,
+  ShieldCheck,
+  Check
 } from 'lucide-react';
 import { ClipConfig, AspectRatio, VerticalStyle, ExportQuality, VideoSourceMetadata } from '../types/driaclip';
 import { Language, TRANSLATIONS } from '../i18n/translations';
@@ -490,6 +492,128 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* Module 4: Watermark DriaClip — Strategic Anti-Crop & Brand Protection */}
+      <div className="rounded-2xl border border-violet-200/80 dark:border-violet-900/40 bg-violet-50/40 dark:bg-[#13112c]/40 p-5 sm:p-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <span>{isId ? 'Watermark DriaClip (Perlindungan Anti-Crop)' : 'DriaClip Watermark (Anti-Crop Protection)'}</span>
+          </label>
+
+          <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-300/60 dark:border-emerald-800">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span>{config.watermark !== false ? (isId ? 'Aktif (Terlindungi)' : 'Active (Protected)') : (isId ? 'Nonaktif' : 'Disabled')}</span>
+          </span>
+        </div>
+
+        {/* Toggle & Positioning Controls */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-white/80 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800">
+            <div className="space-y-0.5 pr-3">
+              <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block">
+                {isId ? 'Sematkan Watermark DriaClip pada Hasil Video' : 'Embed DriaClip Watermark on Output Clips'}
+              </span>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                {isId 
+                  ? 'Menjaga kepemilikan konten saat video diunduh, disebarkan, atau di-repost oleh orang lain.' 
+                  : 'Preserves your content branding when video is downloaded, distributed, or reposted by third parties.'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => updateConfig('watermark', config.watermark === false ? true : false)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                config.watermark !== false ? 'bg-violet-600' : 'bg-slate-300 dark:bg-slate-700'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                  config.watermark !== false ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {config.watermark !== false && (
+            <div className="space-y-2 pt-1 animate-in fade-in duration-200">
+              <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                <span>{isId ? 'Pilihan Posisi Strategis:' : 'Strategic Position:'}</span>
+                <span className="text-[10px] text-violet-600 dark:text-violet-400 font-mono">
+                  {isId ? 'Anti-Crop Safe Zone' : 'Anti-Crop Safe Zone'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {[
+                  {
+                    id: 'safe-top-left',
+                    title: isId ? 'Kiri Atas' : 'Upper-Left',
+                    badge: isId ? 'Paling Direkomendasikan' : 'Recommended',
+                    desc: isId 
+                      ? 'Bebas tombol Like/Share TikTok & subtitle bawah. Mustahil di-crop tanpa memotong wajah.' 
+                      : 'Free from Like/Share buttons & captions. Impossible to crop without cutting the face.'
+                  },
+                  {
+                    id: 'safe-top-right',
+                    title: isId ? 'Kanan Atas' : 'Upper-Right',
+                    badge: isId ? 'Area Aman' : 'Safe Area',
+                    desc: isId 
+                      ? 'Di atas tombol interaksi Reels/TikTok, tetap terlihat jelas.' 
+                      : 'Above Reels/TikTok interaction buttons, remains clearly visible.'
+                  },
+                  {
+                    id: 'center-top',
+                    title: isId ? 'Tengah Atas' : 'Center-Top',
+                    badge: isId ? 'Fokus Atas' : 'Top Center',
+                    desc: isId 
+                      ? 'Di tengah bagian atas, di bawah status bar ponsel.' 
+                      : 'Centered at the top, just below the mobile status bar.'
+                  }
+                ].map((pos) => {
+                  const isSelected = (config.watermarkPosition || 'safe-top-left') === pos.id;
+                  return (
+                    <button
+                      key={pos.id}
+                      type="button"
+                      onClick={() => updateConfig('watermarkPosition', pos.id as any)}
+                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                        isSelected
+                          ? 'border-violet-600 bg-violet-600/10 dark:bg-violet-950/40 text-violet-900 dark:text-violet-100 ring-1 ring-violet-500'
+                          : 'border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 hover:border-violet-400 dark:hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold">{pos.title}</span>
+                          {pos.badge && (
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300">
+                              {pos.badge}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
+                          {pos.desc}
+                        </p>
+                      </div>
+
+                      {/* Visual Badge Preview Mini */}
+                      <div className="mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center gap-1.5">
+                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-950/85 border border-violet-500/70 text-white text-[9px] font-bold shadow-xs">
+                          <span className="h-1 w-1 rounded-full bg-violet-400 shrink-0" />
+                          <span>DriaClip</span>
+                        </div>
+                        {isSelected && <Check className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 ml-auto" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

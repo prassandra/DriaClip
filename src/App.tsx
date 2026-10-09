@@ -79,6 +79,8 @@ export default function App() {
     addCaptions: true,
     detectSceneChanges: true,
     minSpeechEnergy: 75,
+    watermark: true, // Watermark DriaClip in anti-crop safe zone
+    watermarkPosition: 'safe-top-left',
   });
 
   // Custom Markers for Manual Split
@@ -244,6 +246,8 @@ export default function App() {
           trackingKeyframes: undefined,
           autoTrackEnabled: false,
           exportQuality: config.exportQuality,
+          watermark: config.watermark !== false,
+          watermarkPosition: config.watermarkPosition || 'safe-top-left',
           status: 'ready',
           thumbnailBlobUrl: thumbnail,
           score: seg.score,
@@ -320,6 +324,8 @@ export default function App() {
           verticalStyle: config.verticalStyle,
           cropPositionX: config.cropPositionX ?? 50,
           exportQuality: config.exportQuality,
+          watermark: config.watermark !== false,
+          watermarkPosition: config.watermarkPosition || 'safe-top-left',
           status: 'ready',
           thumbnailBlobUrl: fallbackThumb,
           score: 92 + (partIdx % 6),
@@ -457,7 +463,9 @@ export default function App() {
           undefined,
           clip.cropPositionX ?? 50,
           clip.trackingKeyframes,
-          clip.zoomOutPercent ?? 20
+          clip.zoomOutPercent ?? 20,
+          clip.watermark !== false,
+          clip.watermarkPosition || 'safe-top-left'
         );
         clip.videoBlobUrl = res.url;
         clip.videoExtension = res.extension;
