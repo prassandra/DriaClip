@@ -139,6 +139,7 @@ export const InputSourceSection: React.FC<InputSourceSectionProps> = ({
         height: vh || 1080,
         sizeBytes: file.size,
         format: ext.toUpperCase() || 'MP4',
+        file: file,
       };
       
       onSelectSource(source);

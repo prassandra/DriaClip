@@ -26,6 +26,7 @@ export interface VideoSourceMetadata {
   format: string;
   thumbnailUrl?: string;
   youtubeId?: string;
+  file?: File;
 }
 
 export interface SplitMarker {

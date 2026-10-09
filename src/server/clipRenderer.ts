@@ -73,42 +73,97 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
     } catch {}
   };
 
+  // 1. Direct local sample optimization: if file is already on server, slice directly with ffmpeg!
+  let localSamplePath: string | null = null;
+  if (targetUrl.startsWith('/samples/')) {
+    localSamplePath = path.join(process.cwd(), 'public', targetUrl);
+  } else if (targetUrl.includes('/samples/')) {
+    try {
+      const u = new URL(targetUrl);
+      if (u.pathname.startsWith('/samples/')) {
+        localSamplePath = path.join(process.cwd(), 'public', u.pathname);
+      }
+    } catch {}
+  }
+
+  if (localSamplePath && fs.existsSync(localSamplePath)) {
+    return await handleRenderLocalClip(localSamplePath, body);
+  }
+
   try {
-    // 1. Download target section with yt-dlp
-    const ytDlpArgs = [
-      '--js-runtimes',
-      'node:/usr/local/bin/node',
-      '--no-check-certificates',
+    const clipDuration = Math.max(1, safeEnd - safeStart);
+    const ytDlpTimeoutMs = Math.max(60000, clipDuration * 2500);
+    const ffmpegTimeoutMs = Math.max(120000, clipDuration * 3000);
+
+    let formatSpec = '18/b[ext=mp4]/best';
+    if (quality === '1080p') {
+      formatSpec = 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[height<=1080]/18/best';
+    } else if (quality === '480p' || quality === '360p') {
+      formatSpec = '18/bestvideo[height<=480]+bestaudio/best[height<=480]/best';
+    }
+
+    // Fast-first client strategy: default solver first (fastest & handles visionos/web), then fallbacks
+    const clientCandidates: (string | null)[] = [
+      null, // standard default
+      'youtube:player_client=tv,web',
+      'youtube:player_client=ios,mweb',
     ];
 
-    const cookiesPath = path.resolve(process.cwd(), 'cookies.txt');
-    if (fs.existsSync(cookiesPath)) {
-      ytDlpArgs.push('--cookies', cookiesPath);
-    }
+    let downloaded = false;
+    let lastError: any = null;
 
-    ytDlpArgs.push(
-      '--download-sections',
-      `*${safeStart}-${safeEnd}`,
-      '--force-keyframes-at-cuts',
-      '-f',
-      '18/b[ext=mp4]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best',
-      targetUrl,
-      '-o',
-      rawClipPath
-    );
+    for (const clientArg of clientCandidates) {
+      if (downloaded) break;
 
-    try {
-      await execFileAsync(YT_DLP_PATH, ytDlpArgs, { timeout: 60000 });
-    } catch (ytErr: any) {
-      const errOut = ytErr?.stderr || ytErr?.stdout || ytErr?.message || '';
-      if (errOut.includes('Sign in to confirm you’re not a bot') || errOut.includes('bot')) {
-        throw new Error('YOUTUBE_BOT_PROTECTION: YouTube mendeteksi bot scraping pada IP server. Generator dialihkan ke peramban.');
+      const ytDlpArgs = [
+        '--js-runtimes',
+        'node:/usr/local/bin/node',
+        '--no-check-certificates',
+        '--socket-timeout',
+        '15',
+        '--retries',
+        '1',
+        '--download-sections',
+        `*${safeStart}-${safeEnd}`,
+        '--force-keyframes-at-cuts',
+        '-f',
+        formatSpec,
+        targetUrl,
+        '-o',
+        rawClipPath,
+      ];
+
+      if (clientArg) {
+        ytDlpArgs.push('--extractor-args', clientArg);
       }
-      throw new Error(`Gagal mengunduh bagian klip dari sumber YouTube: ${ytErr?.message || 'yt-dlp error'}`);
+
+      const cookiesPath = path.resolve(process.cwd(), 'cookies.txt');
+      if (fs.existsSync(cookiesPath)) {
+        ytDlpArgs.push('--cookies', cookiesPath);
+      }
+
+      try {
+        await execFileAsync(YT_DLP_PATH, ytDlpArgs, { timeout: ytDlpTimeoutMs });
+        if (fs.existsSync(rawClipPath) && fs.statSync(rawClipPath).size > 1000) {
+          downloaded = true;
+          break;
+        }
+      } catch (ytErr: any) {
+        lastError = ytErr;
+        const errOut = ytErr?.stderr || ytErr?.stdout || ytErr?.message || '';
+        if (errOut.includes('Video unavailable') || errOut.includes('Private video')) {
+          break;
+        }
+        continue;
+      }
     }
 
-    if (!fs.existsSync(rawClipPath)) {
-      throw new Error('Gagal mengunduh bagian klip dari sumber YouTube/video.');
+    if (!downloaded || !fs.existsSync(rawClipPath)) {
+      const errOut = lastError?.stderr || lastError?.stdout || lastError?.message || '';
+      if (errOut.includes('Sign in to confirm you’re not a bot') || errOut.includes('bot')) {
+        throw new Error('YOUTUBE_BOT_PROTECTION: YouTube menerapkan verifikasi bot pada video ini di cloud server. Silakan coba unggah file video (MP4/WebM) secara langsung atau coba link video lain.');
+      }
+      throw new Error(`Gagal mengunduh bagian klip dari sumber video: ${lastError?.message || 'Download gagal'}`);
     }
 
     // 2. Determine target width & height
@@ -136,10 +191,10 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
 
     if (aspectRatio === '9:16') {
       if (verticalStyle === 'blur-background') {
-        // Crisp centered 16:9, blurred video backdrop filling top and bottom
+        // High-speed downscale-blur-upscale backdrop + sharp centered foreground
         ffmpegArgs.push(
           '-filter_complex',
-          `[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH}:(in_w-${targetW})/2:(in_h-${targetH})/2,boxblur=20:5[bg];[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]`,
+          `[0:v]scale=180:320:force_original_aspect_ratio=increase,crop=180:320:(in_w-180)/2:(in_h-320)/2,boxblur=5:2,scale=${targetW}:${targetH}[bg];[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]`,
           '-map',
           '[outv]',
           '-map',
@@ -147,7 +202,9 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
           '-c:v',
           'libx264',
           '-preset',
-          'veryfast',
+          'ultrafast',
+          '-threads',
+          '0',
           '-crf',
           '23',
           '-pix_fmt',
@@ -172,7 +229,9 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
           '-c:v',
           'libx264',
           '-preset',
-          'veryfast',
+          'ultrafast',
+          '-threads',
+          '0',
           '-crf',
           '23',
           '-pix_fmt',
@@ -186,16 +245,16 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
           finalClipPath
         );
       } else {
-        // center-crop: Centered at 50% with comfortable Zoom-Out (without tight fit or stretch!)
+        // center-crop: Centered at 50% with comfortable Zoom-Out and high-speed blurred backdrop
         const zoomFactor = Math.max(0.05, Math.min(0.45, (Number(body.zoomOutPercent) || 20) / 100));
         const tightH = targetH;
-        const fitH = Math.round(targetW / (16 / 9)); // e.g. 405 for 720p 9:16
+        const fitH = Math.round(targetW / (16 / 9));
         const rawFgH = Math.round(tightH - (tightH - fitH) * zoomFactor * 1.8);
         const safeFgH = rawFgH % 2 === 0 ? rawFgH : rawFgH - 1;
 
         ffmpegArgs.push(
           '-filter_complex',
-          `[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH}:(in_w-${targetW})/2:(in_h-${targetH})/2,boxblur=25:5[bg];[0:v]scale=-2:${safeFgH}[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]`,
+          `[0:v]scale=180:320:force_original_aspect_ratio=increase,crop=180:320:(in_w-180)/2:(in_h-320)/2,boxblur=5:2,scale=${targetW}:${targetH}[bg];[0:v]scale=-2:${safeFgH}[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]`,
           '-map',
           '[outv]',
           '-map',
@@ -203,7 +262,9 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
           '-c:v',
           'libx264',
           '-preset',
-          'veryfast',
+          'ultrafast',
+          '-threads',
+          '0',
           '-crf',
           '23',
           '-pix_fmt',
@@ -230,7 +291,9 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
         '-c:v',
         'libx264',
         '-preset',
-        'veryfast',
+        'ultrafast',
+        '-threads',
+        '0',
         '-crf',
         '23',
         '-pix_fmt',
@@ -255,7 +318,9 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
         '-c:v',
         'libx264',
         '-preset',
-        'veryfast',
+        'ultrafast',
+        '-threads',
+        '0',
         '-crf',
         '23',
         '-pix_fmt',
@@ -270,7 +335,7 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
       );
     }
 
-    await execFileAsync('/usr/bin/ffmpeg', ffmpegArgs, { timeout: 60000 });
+    await execFileAsync('/usr/bin/ffmpeg', ffmpegArgs, { timeout: ffmpegTimeoutMs });
 
     const outputPath = fs.existsSync(finalClipPath) ? finalClipPath : rawClipPath;
     const fileName = `driaclip_${quality}_${safeTitle}.mp4`;
@@ -334,6 +399,8 @@ export async function handleRenderLocalClip(
     targetW = targetW % 2 === 0 ? targetW : targetW - 1;
     targetH = targetH % 2 === 0 ? targetH : targetH - 1;
 
+    const ffmpegTimeoutMs = Math.max(300000, safeDuration * 5000);
+
     const ffmpegArgs: string[] = [
       '-y',
       '-ss',
@@ -348,7 +415,7 @@ export async function handleRenderLocalClip(
       if (verticalStyle === 'blur-background') {
         ffmpegArgs.push(
           '-filter_complex',
-          `[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH}:(in_w-${targetW})/2:(in_h-${targetH})/2,boxblur=20:5[bg];[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]`,
+          `[0:v]scale=180:320:force_original_aspect_ratio=increase,crop=180:320:(in_w-180)/2:(in_h-320)/2,boxblur=5:2,scale=${targetW}:${targetH}[bg];[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]`,
           '-map',
           '[outv]',
           '-map',
@@ -356,7 +423,9 @@ export async function handleRenderLocalClip(
           '-c:v',
           'libx264',
           '-preset',
-          'veryfast',
+          'ultrafast',
+          '-threads',
+          '0',
           '-crf',
           '23',
           '-pix_fmt',
@@ -380,7 +449,9 @@ export async function handleRenderLocalClip(
           '-c:v',
           'libx264',
           '-preset',
-          'veryfast',
+          'ultrafast',
+          '-threads',
+          '0',
           '-crf',
           '23',
           '-pix_fmt',
@@ -403,7 +474,7 @@ export async function handleRenderLocalClip(
 
         ffmpegArgs.push(
           '-filter_complex',
-          `[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH}:(in_w-${targetW})/2:(in_h-${targetH})/2,boxblur=25:5[bg];[0:v]scale=-2:${safeFgH}[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]`,
+          `[0:v]scale=180:320:force_original_aspect_ratio=increase,crop=180:320:(in_w-180)/2:(in_h-320)/2,boxblur=5:2,scale=${targetW}:${targetH}[bg];[0:v]scale=-2:${safeFgH}[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]`,
           '-map',
           '[outv]',
           '-map',
@@ -411,7 +482,9 @@ export async function handleRenderLocalClip(
           '-c:v',
           'libx264',
           '-preset',
-          'veryfast',
+          'ultrafast',
+          '-threads',
+          '0',
           '-crf',
           '23',
           '-pix_fmt',
@@ -438,7 +511,9 @@ export async function handleRenderLocalClip(
         '-c:v',
         'libx264',
         '-preset',
-        'veryfast',
+        'ultrafast',
+        '-threads',
+        '0',
         '-crf',
         '23',
         '-pix_fmt',
@@ -462,7 +537,9 @@ export async function handleRenderLocalClip(
         '-c:v',
         'libx264',
         '-preset',
-        'veryfast',
+        'ultrafast',
+        '-threads',
+        '0',
         '-crf',
         '23',
         '-pix_fmt',
@@ -477,7 +554,7 @@ export async function handleRenderLocalClip(
       );
     }
 
-    await execFileAsync('/usr/bin/ffmpeg', ffmpegArgs, { timeout: 60000 });
+    await execFileAsync('/usr/bin/ffmpeg', ffmpegArgs, { timeout: ffmpegTimeoutMs });
 
     const outputPath = fs.existsSync(finalClipPath) ? finalClipPath : sourceFilePath;
     const fileName = `driaclip_${quality}_${safeTitle}.mp4`;

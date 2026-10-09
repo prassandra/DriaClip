@@ -630,17 +630,15 @@ export async function renderClipBlob(
 
     const targetDuration = Math.max(0.5, endTime - startTime);
 
-    // Create off-screen video element attached to DOM with active compositing dimensions
-    // to prevent browser hardware video decoding suspension/throttling!
+    // Create offscreen video element attached to DOM
     const video = document.createElement('video');
     video.style.position = 'fixed';
-    video.style.bottom = '0px';
-    video.style.right = '0px';
+    video.style.left = '-9999px';
+    video.style.top = '-9999px';
     video.style.width = '320px';
     video.style.height = '180px';
-    video.style.opacity = '0.02';
+    video.style.opacity = '0.01';
     video.style.pointerEvents = 'none';
-    video.style.zIndex = '-9999';
     document.body.appendChild(video);
 
     if (!videoUrl.startsWith('blob:') && !videoUrl.startsWith('data:')) {
@@ -649,35 +647,36 @@ export async function renderClipBlob(
     video.src = videoUrl;
     video.preload = 'auto';
     video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
     video.muted = true;
+    video.defaultMuted = true;
+    video.volume = 0;
 
-    // Resolution sizing
+    // Use memory-efficient 720p maximum in browser mode to prevent freezing & memory spikes
     let targetW = 720;
     let targetH = 1280;
-    if (quality === '1080p') {
-      targetW = aspectRatio === '9:16' ? 1080 : aspectRatio === '1:1' ? 1080 : 1920;
-      targetH = aspectRatio === '9:16' ? 1920 : aspectRatio === '1:1' ? 1080 : 1080;
-    } else if (quality === '720p') {
-      targetW = aspectRatio === '9:16' ? 720 : aspectRatio === '1:1' ? 720 : 1280;
-      targetH = aspectRatio === '9:16' ? 1280 : aspectRatio === '1:1' ? 720 : 720;
-    } else if (quality === '480p') {
-      targetW = aspectRatio === '9:16' ? 480 : aspectRatio === '1:1' ? 480 : 854;
-      targetH = aspectRatio === '9:16' ? 854 : aspectRatio === '1:1' ? 480 : 480;
-    } else if (quality === '360p') {
-      targetW = aspectRatio === '9:16' ? 360 : aspectRatio === '1:1' ? 360 : 640;
-      targetH = aspectRatio === '9:16' ? 640 : aspectRatio === '1:1' ? 360 : 360;
+    if (aspectRatio === '9:16') {
+      targetW = 720;
+      targetH = 1280;
+    } else if (aspectRatio === '1:1') {
+      targetW = 720;
+      targetH = 720;
+    } else {
+      targetW = 1280;
+      targetH = 720;
     }
 
     const canvas = document.createElement('canvas');
     canvas.width = targetW;
     canvas.height = targetH;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
 
-    // Fast off-screen blur canvas for silky-smooth 60fps hardware blur without UI stall
+    // Lightweight blur helper canvas
     const blurCanvas = document.createElement('canvas');
-    blurCanvas.width = 180;
-    blurCanvas.height = 320;
-    const blurCtx = blurCanvas.getContext('2d');
+    blurCanvas.width = 160;
+    blurCanvas.height = 284;
+    const blurCtx = blurCanvas.getContext('2d', { alpha: false });
 
     if (!ctx) {
       if (video.parentNode) video.parentNode.removeChild(video);
@@ -700,7 +699,7 @@ export async function renderClipBlob(
       // Step 2: Prepare canvas stream (30fps)
       const stream = canvas.captureStream(30);
 
-      // Step 3: Audio capture via Web Audio (does NOT blast speakers)
+      // Step 3: Audio capture via Web Audio
       let audioCtx: AudioContext | null = null;
       try {
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -742,7 +741,11 @@ export async function renderClipBlob(
         }
       }
 
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+      // Constrain bitrate to 2.5 Mbps so browser hardware/software encoder doesn't choke CPU
+      const recorder = new MediaRecorder(
+        stream,
+        mimeType ? { mimeType, videoBitsPerSecond: 2500000 } : { videoBitsPerSecond: 2500000 }
+      );
       const chunks: Blob[] = [];
 
       recorder.ondataavailable = (e) => {
@@ -759,7 +762,7 @@ export async function renderClipBlob(
           res();
         };
         video.addEventListener('seeked', onSeeked);
-        setTimeout(res, 1200);
+        setTimeout(res, 1000);
       });
 
       // Step 6: Start playback safely
@@ -777,14 +780,27 @@ export async function renderClipBlob(
       recorder.start(100);
 
       let isDone = false;
-      let animationFrameId: number;
-      let intervalId: any;
+      let frameCounter = 0;
+      let lastReportedProgress = -1;
+      let lastReportedTime = 0;
+      let rvfcId: number | null = null;
+      let rafId: number | null = null;
+      let failsafeTimeoutId: any = null;
 
       const finishRecording = () => {
         if (isDone) return;
         isDone = true;
-        cancelAnimationFrame(animationFrameId);
-        clearInterval(intervalId);
+        if (failsafeTimeoutId) clearTimeout(failsafeTimeoutId);
+        if (rvfcId !== null && (video as any).cancelVideoFrameCallback) {
+          try {
+            (video as any).cancelVideoFrameCallback(rvfcId);
+          } catch {}
+          rvfcId = null;
+        }
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
         video.pause();
         onProgress?.(100);
         if (recorder.state === 'recording') {
@@ -803,7 +819,7 @@ export async function renderClipBlob(
         }
         const blobUrl = URL.createObjectURL(finalBlob);
 
-        // Cleanup
+        // Cleanup DOM and audio context
         if (video.parentNode) {
           video.parentNode.removeChild(video);
         }
@@ -814,51 +830,56 @@ export async function renderClipBlob(
         resolve({ blob: finalBlob, url: blobUrl, size: finalBlob.size, extension: chosenExt });
       };
 
-      const drawLoop = () => {
+      const renderCurrentFrame = async (curTime: number) => {
         if (isDone) return;
 
-        const cur = video.currentTime;
-        const elapsed = Math.max(0, cur - startTime);
-        const progress = Math.min(99, Math.round((elapsed / targetDuration) * 100));
-        onProgress?.(progress);
+        // Auto-resume if paused unexpectedly
+        if (video.paused && !video.ended && video.readyState >= 2) {
+          video.play().catch(() => {});
+        }
 
-        // Render aspect ratio transform
+        const elapsed = Math.max(0, curTime - startTime);
+        const progress = Math.min(99, Math.round((elapsed / targetDuration) * 100));
+
+        // Throttle progress callback to avoid freezing the browser main thread
+        const now = performance.now();
+        if (progress !== lastReportedProgress && now - lastReportedTime > 250) {
+          lastReportedProgress = progress;
+          lastReportedTime = now;
+          onProgress?.(progress);
+        }
+
+        frameCounter++;
         const vw = video.videoWidth || 1280;
         const vh = video.videoHeight || 720;
-
-        // Clean center-crop framing (fixed at 50% middle, zero camera panning)
         const currentEffectiveCropX = 50;
 
         if (aspectRatio === '9:16') {
           if (verticalStyle === 'blur-background') {
-            // High-speed hardware-accelerated smooth background blur:
-            if (blurCtx) {
+            // Update backdrop only every 4th frame to save 75% CPU load
+            if (blurCtx && frameCounter % 4 === 0) {
               blurCtx.drawImage(video, 0, 0, blurCanvas.width, blurCanvas.height);
-              ctx.imageSmoothingEnabled = true;
-              ctx.imageSmoothingQuality = 'low';
+            }
+            if (blurCtx) {
               ctx.drawImage(blurCanvas, 0, 0, targetW, targetH);
             }
-            // Semi-transparent dark overlay so foreground pops cleanly
             ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
             ctx.fillRect(0, 0, targetW, targetH);
 
-            // Centered sharp 16:9 video
             const fitScale = targetW / vw;
             const fgH = vh * fitScale;
             const fgY = (targetH - fgH) / 2;
             ctx.drawImage(video, 0, fgY, targetW, fgH);
           } else if (verticalStyle === 'letterbox') {
-            // Bilah Hitam: Pure deep black background top and bottom
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, targetW, targetH);
 
-            // Centered sharp 16:9 video
             const fitScale = targetW / vw;
             const fgH = vh * fitScale;
             const fgY = (targetH - fgH) / 2;
             ctx.drawImage(video, 0, fgY, targetW, fgH);
           } else {
-            // center-crop with comfortable Zoom-Out (centered at 50%, zero stretch)
+            // center-crop with comfortable Zoom-Out
             const zoomFactor = Math.max(0.05, Math.min(0.45, (zoomOutPercent ?? 20) / 100));
             const tightScale = targetH / vh;
             const fitScale = targetW / vw;
@@ -868,10 +889,10 @@ export async function renderClipBlob(
             const fgX = (targetW - fgW) / 2;
             const fgY = (targetH - fgH) / 2;
 
-            if (blurCtx) {
+            if (blurCtx && frameCounter % 4 === 0) {
               blurCtx.drawImage(video, 0, 0, blurCanvas.width, blurCanvas.height);
-              ctx.imageSmoothingEnabled = true;
-              ctx.imageSmoothingQuality = 'low';
+            }
+            if (blurCtx) {
               ctx.drawImage(blurCanvas, 0, 0, targetW, targetH);
             }
             ctx.fillStyle = 'rgba(0, 0, 0, 0.40)';
@@ -891,21 +912,49 @@ export async function renderClipBlob(
         }
 
         // Check if reached clip end time (or video ended)
-        if (cur >= endTime - 0.05 || video.ended) {
+        if (curTime >= endTime - 0.05 || video.ended) {
           finishRecording();
           return;
         }
 
-        animationFrameId = requestAnimationFrame(drawLoop);
+        // Periodically yield to event loop so browser stays completely responsive
+        if (frameCounter % 6 === 0) {
+          await new Promise((r) => setTimeout(r, 0));
+        }
       };
 
-      animationFrameId = requestAnimationFrame(drawLoop);
-      intervalId = setInterval(drawLoop, 33); // 30 fps backup timer
+      // Use requestVideoFrameCallback (synchronized with hardware video decoder) if available,
+      // otherwise requestAnimationFrame. NEVER use setInterval which causes thread starvation and UI freeze!
+      if (typeof (video as any).requestVideoFrameCallback === 'function') {
+        const onVideoFrame = async (_now: DOMHighResTimeStamp, metadata?: any) => {
+          if (isDone) return;
+          const mediaTime = metadata?.mediaTime ?? (video as HTMLVideoElement).currentTime;
+          await renderCurrentFrame(mediaTime);
+          if (!isDone) {
+            rvfcId = (video as any).requestVideoFrameCallback(onVideoFrame);
+          }
+        };
+        rvfcId = (video as any).requestVideoFrameCallback(onVideoFrame);
+      } else {
+        let lastTime = -1;
+        const onRaf = async () => {
+          if (isDone) return;
+          const cur = (video as HTMLVideoElement).currentTime;
+          if (cur !== lastTime) {
+            lastTime = cur;
+            await renderCurrentFrame(cur);
+          }
+          if (!isDone) {
+            rafId = requestAnimationFrame(onRaf);
+          }
+        };
+        rafId = requestAnimationFrame(onRaf);
+      }
 
       // Failsafe max timeout
-      setTimeout(() => {
+      failsafeTimeoutId = setTimeout(() => {
         finishRecording();
-      }, (targetDuration + 2.5) * 1000);
+      }, (targetDuration + 3.0) * 1000);
 
     } catch (err) {
       if (video.parentNode) video.parentNode.removeChild(video);
@@ -989,7 +1038,7 @@ export async function downloadServerRenderedClip(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Gagal memproses klip video asli');
+    throw new Error(err.details || err.error || 'Gagal memproses klip video asli');
   }
 
   const blob = await res.blob();
@@ -1004,6 +1053,12 @@ export async function downloadServerRenderedLocalClip(
   clip: GeneratedClip,
   blobOrFile: Blob | File
 ): Promise<{ blob: Blob; url: string }> {
+  // Cloud Run and network proxies strictly cap request bodies at 32MB.
+  // Files larger than 25MB will immediately fail or freeze the browser.
+  if (blobOrFile.size > 25 * 1024 * 1024) {
+    throw new Error('FILE_TOO_LARGE_FOR_SERVER_STREAM');
+  }
+
   const params = new URLSearchParams({
     startTime: String(clip.startTime),
     endTime: String(clip.endTime),
@@ -1023,7 +1078,7 @@ export async function downloadServerRenderedLocalClip(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Gagal memproses klip video lokal');
+    throw new Error(err.details || err.error || 'Gagal memproses klip video lokal');
   }
 
   const blob = await res.blob();
@@ -1058,192 +1113,19 @@ export function downloadClipAsMp4(clip: GeneratedClip, fallbackSourceUrl?: strin
 }
 
 /**
- * Generates an actual downloadable clip MP4/WebM blob directly into user storage
- * For YouTube or fallback streams, renders a full-duration video matching the exact clip duration (e.g. 15s)
- * with animated waveforms, progress bar, audio tone, hook text, and duration metadata fix!
+ * Downloadable clip blob helper:
+ * Returns the clip's genuine video Blob if already generated, or throws an error
+ * instead of generating a fake static-image video.
  */
 export async function createDownloadableClipBlob(
   clip: GeneratedClip,
-  thumbnailUrl?: string,
-  onProgress?: (percent: number) => void
+  _thumbnailUrl?: string,
+  _onProgress?: (percent: number) => void
 ): Promise<{ blob: Blob; url: string; extension: 'mp4' | 'webm' }> {
-  return new Promise(async (resolve) => {
-    const targetDuration = Math.max(1, clip.duration || 15);
-    const isVertical = clip.aspectRatio === '9:16';
-    const width = isVertical ? 720 : 1280;
-    const height = isVertical ? 1280 : 720;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d')!;
-
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-
-    // Preload image before starting recording so frame 0 is never black!
-    const posterSrc = thumbnailUrl || clip.thumbnailBlobUrl;
-    if (posterSrc) {
-      await new Promise<void>((r) => {
-        img.onload = () => r();
-        img.onerror = () => r();
-        img.src = posterSrc;
-        if (img.complete && img.naturalWidth > 0) r();
-        setTimeout(r, 800);
-      });
-    }
-
-    // Audio synthesizer to provide a real audio track
-    let audioCtx: AudioContext | null = null;
-    const stream = canvas.captureStream(30);
-
-    try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioContextClass) {
-        audioCtx = new AudioContextClass();
-        if (audioCtx.state === 'suspended') {
-          await audioCtx.resume();
-        }
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        gain.gain.value = 0.05; // Gentle background synthesizer tone
-        osc.type = 'sine';
-        osc.frequency.value = 220; // 220 Hz pleasant low tone
-        osc.connect(gain);
-        const dest = audioCtx.createMediaStreamDestination();
-        gain.connect(dest);
-        osc.start();
-        dest.stream.getAudioTracks().forEach((track) => stream.addTrack(track));
-      }
-    } catch {}
-
-    let mimeType = 'video/webm';
-    let chosenExt: 'mp4' | 'webm' = 'webm';
-    if (typeof MediaRecorder !== 'undefined') {
-      if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2')) {
-        mimeType = 'video/mp4;codecs=avc1,mp4a.40.2';
-        chosenExt = 'mp4';
-      } else if (MediaRecorder.isTypeSupported('video/mp4')) {
-        mimeType = 'video/mp4';
-        chosenExt = 'mp4';
-      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
-        mimeType = 'video/webm;codecs=vp9,opus';
-        chosenExt = 'webm';
-      }
-    }
-
-    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
-    const chunks: Blob[] = [];
-
-    recorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) chunks.push(e.data);
-    };
-
-    let isDone = false;
-    let animId: number;
-    let intervalId: any;
-    const startTimeReal = performance.now();
-
-    const finishRecord = async () => {
-      if (isDone) return;
-      isDone = true;
-      cancelAnimationFrame(animId);
-      clearInterval(intervalId);
-      onProgress?.(100);
-      if (recorder.state === 'recording') {
-        recorder.stop();
-      }
-    };
-
-    recorder.onstop = async () => {
-      let finalBlob = new Blob(chunks, { type: mimeType });
-      if (chosenExt === 'webm' || mimeType.includes('webm')) {
-        try {
-          finalBlob = await fixWebmDuration(finalBlob, targetDuration * 1000);
-        } catch {}
-      }
-      const url = URL.createObjectURL(finalBlob);
-      if (audioCtx && audioCtx.state !== 'closed') {
-        audioCtx.close().catch(() => {});
-      }
-      resolve({ blob: finalBlob, url, extension: chosenExt });
-    };
-
-    recorder.start(100);
-
-    const drawFrame = () => {
-      if (isDone) return;
-      const elapsedSec = (performance.now() - startTimeReal) / 1000;
-      const progressRatio = Math.min(1.0, elapsedSec / targetDuration);
-      onProgress?.(Math.min(99, Math.round(progressRatio * 100)));
-
-      // Draw background image
-      if (img.complete && img.naturalWidth > 0) {
-        ctx.drawImage(img, 0, 0, width, height);
-      } else {
-        ctx.fillStyle = '#090d16';
-        ctx.fillRect(0, 0, width, height);
-      }
-
-      // Cinematic dark gradient
-      const grad = ctx.createLinearGradient(0, height * 0.4, 0, height);
-      grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, 'rgba(0,0,0,0.92)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, width, height);
-
-      // Top branding
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 26px sans-serif';
-      ctx.fillText('driaClip by Driacom', 36, 56);
-
-      // Dynamic Animated Waveform
-      const waveY = height - 160;
-      ctx.fillStyle = 'rgba(168, 85, 247, 0.7)';
-      for (let i = 0; i < 24; i++) {
-        const barH = 10 + Math.sin(elapsedSec * 6 + i) * 18 + Math.cos(i * 1.5) * 8;
-        ctx.fillRect(36 + i * 14, waveY - barH, 8, barH * 2);
-      }
-
-      // Clip details
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 32px sans-serif';
-      ctx.fillText(clip.title, 36, height - 100);
-
-      // Time Range and Duration
-      ctx.fillStyle = '#c084fc';
-      ctx.font = 'bold 20px monospace';
-      ctx.fillText(
-        `${formatTimeCode(clip.startTime)} - ${formatTimeCode(clip.endTime)} (${targetDuration}s) • Posisi: ${formatTimeCode(elapsedSec)}`,
-        36,
-        height - 65
-      );
-
-      // Hook text
-      if (clip.hookText) {
-        ctx.fillStyle = '#cbd5e1';
-        ctx.font = 'italic 16px sans-serif';
-        ctx.fillText(clip.hookText.slice(0, 50), 36, height - 32);
-      }
-
-      // Animated Progress Bar across bottom
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.fillRect(0, height - 8, width, 8);
-      ctx.fillStyle = '#a855f7';
-      ctx.fillRect(0, height - 8, width * progressRatio, 8);
-
-      if (elapsedSec >= targetDuration) {
-        finishRecord();
-        return;
-      }
-
-      animId = requestAnimationFrame(drawFrame);
-    };
-
-    animId = requestAnimationFrame(drawFrame);
-    intervalId = setInterval(drawFrame, 33);
-
-    // Timeout safety
-    setTimeout(finishRecord, (targetDuration + 1.5) * 1000);
-  });
+  if (clip.videoBlobUrl) {
+    const res = await fetch(clip.videoBlobUrl);
+    const blob = await res.blob();
+    return { blob, url: clip.videoBlobUrl, extension: clip.videoExtension || 'mp4' };
+  }
+  throw new Error('Aliran video tidak dapat diproses dari gambar diam. Harap gunakan unduhan server langsung.');
 }

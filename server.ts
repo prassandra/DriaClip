@@ -29,7 +29,7 @@ app.post('/api/render-clip', async (req, res) => {
   } catch (err: any) {
     console.error('Error rendering clip:', err);
     res.status(500).json({ 
-      error: 'Terjadi kesalahan saat memproses video', 
+      error: err?.message || 'Terjadi kesalahan saat memproses video', 
       details: err?.message || String(err) 
     });
   }

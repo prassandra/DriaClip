@@ -426,34 +426,24 @@ export default function App() {
         clip.videoExtension = 'mp4';
         downloadClipAsMp4(clip, undefined, 'mp4');
         return;
-      } catch (err) {
-        console.warn('Server render notice, generating browser-rendered clip:', err);
-      }
-
-      // Safe client-side fallback for YouTube links
-      try {
-        const res = await createDownloadableClipBlob(clip, clip.thumbnailBlobUrl);
-        clip.videoBlobUrl = res.url;
-        clip.videoExtension = res.extension;
-        downloadClipAsMp4(clip, undefined, res.extension);
+      } catch (err: any) {
+        console.error('Server render error:', err);
+        alert(isId ? `Gagal memproses klip video: ${err?.message || 'Error server'}` : `Failed to render clip: ${err?.message || 'Server error'}`);
         return;
-      } catch (err2) {
-        console.error('Fallback generation error:', err2);
       }
-      return;
     }
     if (currentSource?.url) {
-      // Try server rendering for authentic MP4 with ffmpeg first
-      try {
-        const blobRes = await fetch(currentSource.url);
-        const localBlob = await blobRes.blob();
-        const serverLocalResult = await downloadServerRenderedLocalClip(clip, localBlob);
-        clip.videoBlobUrl = serverLocalResult.url;
-        clip.videoExtension = 'mp4';
-        downloadClipAsMp4(clip, undefined, 'mp4');
-        return;
-      } catch (serverLocalErr) {
-        console.warn('Server local render notice, falling back to browser canvas slice:', serverLocalErr);
+      // Try high-speed server rendering if file is under 25MB (Cloud Run limit)
+      if (currentSource.file && currentSource.file.size <= 25 * 1024 * 1024) {
+        try {
+          const serverLocalResult = await downloadServerRenderedLocalClip(clip, currentSource.file);
+          clip.videoBlobUrl = serverLocalResult.url;
+          clip.videoExtension = 'mp4';
+          downloadClipAsMp4(clip, undefined, 'mp4');
+          return;
+        } catch (serverLocalErr) {
+          console.warn('Server local render notice, falling back to browser canvas slice:', serverLocalErr);
+        }
       }
 
       try {
@@ -472,16 +462,9 @@ export default function App() {
         clip.videoBlobUrl = res.url;
         clip.videoExtension = res.extension;
         downloadClipAsMp4(clip, undefined, res.extension);
-      } catch (err) {
-        console.warn('Direct slice notice, generating clip blob fallback:', err);
-        try {
-          const fallbackRes = await createDownloadableClipBlob(clip, clip.thumbnailBlobUrl);
-          clip.videoBlobUrl = fallbackRes.url;
-          clip.videoExtension = fallbackRes.extension;
-          downloadClipAsMp4(clip, undefined, fallbackRes.extension);
-        } catch {
-          downloadClipAsMp4(clip, currentSource.url);
-        }
+      } catch (err: any) {
+        console.error('Direct slice error:', err);
+        alert(isId ? `Gagal memotong video: ${err?.message || 'Error'}` : `Failed to slice video: ${err?.message || 'Error'}`);
       }
     }
   };

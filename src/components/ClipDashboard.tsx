@@ -805,6 +805,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
     title: string;
     duration: number;
   } | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const handleCopyHook = (clip: GeneratedClip) => {
     navigator.clipboard.writeText(`${clip.hookText}\n\n${clip.tags.map((tg: string) => `#${tg.replace(/\s+/g, '')}`).join(' ')}`);
@@ -814,6 +815,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
 
   // Download single clip directly into user storage!
   const handleDownloadSingle = async (clip: GeneratedClip) => {
+    setDownloadError(null);
     // 1. If video blob already generated, download immediately!
     if (clip.videoBlobUrl) {
       downloadClipAsMp4(clip, undefined, clip.videoExtension);
@@ -822,11 +824,10 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
 
     // 2. If YouTube source or online video: render genuine real MP4 video via server (yt-dlp + ffmpeg)!
     if (source?.youtubeId || (source?.url && !source.url.startsWith('blob:') && !source.url.startsWith('data:'))) {
-      let serverSuccess = false;
       try {
         setRenderingClip({
           id: clip.id,
-          progress: 30,
+          progress: 25,
           title: clip.title,
           duration: clip.duration,
         });
@@ -835,39 +836,12 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
         clip.videoBlobUrl = result.url;
         clip.videoExtension = 'mp4';
         downloadClipAsMp4(clip, undefined, 'mp4');
-        serverSuccess = true;
         return;
       } catch (err: any) {
-        console.warn('Server render notice, generating browser-rendered clip:', err?.message || err);
-      } finally {
-        if (serverSuccess) {
-          setRenderingClip(null);
-        }
-      }
-
-      // Fallback generator for YouTube links when server scraping is rate-limited:
-      try {
-        setRenderingClip({
-          id: clip.id,
-          progress: 15,
-          title: clip.title,
-          duration: clip.duration,
-        });
-
-        const result = await createDownloadableClipBlob(
-          clip,
-          clip.thumbnailBlobUrl,
-          (percent) => {
-            setRenderingClip((prev) => (prev ? { ...prev, progress: Math.max(5, percent) } : null));
-          }
+        console.error('Server render error:', err);
+        setDownloadError(
+          err?.message || (isId ? 'Gagal memproses klip video dari server. Periksa koneksi atau coba durasi klip yang lebih pendek.' : 'Failed to process clip from server.')
         );
-
-        clip.videoBlobUrl = result.url;
-        clip.videoExtension = result.extension;
-        downloadClipAsMp4(clip, undefined, result.extension);
-        return;
-      } catch (errFallback) {
-        console.error('Client fallback clip generation failed:', errFallback);
       } finally {
         setRenderingClip(null);
       }
@@ -884,17 +858,17 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
           duration: clip.duration,
         });
 
-        // Try high-speed server rendering first to guarantee authentic MP4 output
-        try {
-          const blobRes = await fetch(source.url);
-          const localBlob = await blobRes.blob();
-          const serverLocalResult = await downloadServerRenderedLocalClip(clip, localBlob);
-          clip.videoBlobUrl = serverLocalResult.url;
-          clip.videoExtension = 'mp4';
-          downloadClipAsMp4(clip, undefined, 'mp4');
-          return;
-        } catch (serverLocalErr) {
-          console.warn('Server local render notice, falling back to browser slice:', serverLocalErr);
+        // Try high-speed server rendering if file is under 25MB (Cloud Run limit)
+        if (source.file && source.file.size <= 25 * 1024 * 1024) {
+          try {
+            const serverLocalResult = await downloadServerRenderedLocalClip(clip, source.file);
+            clip.videoBlobUrl = serverLocalResult.url;
+            clip.videoExtension = 'mp4';
+            downloadClipAsMp4(clip, undefined, 'mp4');
+            return;
+          } catch (serverLocalErr) {
+            console.warn('Server local render notice, falling back to browser slice:', serverLocalErr);
+          }
         }
 
         const result = await renderClipBlob(
@@ -918,11 +892,13 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
 
         // Trigger download with correct format
         downloadClipAsMp4(clip, undefined, result.extension);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to render clip slice:', err);
+        setDownloadError(err?.message || (isId ? 'Gagal memotong video.' : 'Failed to slice video.'));
       } finally {
         setRenderingClip(null);
       }
+      return;
     }
   };
 
@@ -1044,6 +1020,23 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
           </button>
         </div>
       </div>
+
+      {downloadError && (
+        <div className="flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-600 dark:text-red-400">
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span className="font-semibold block">{isId ? 'Gagal Mengunduh Klip:' : 'Failed to Download Clip:'}</span>
+            <p className="mt-0.5 text-slate-700 dark:text-slate-300">{downloadError}</p>
+          </div>
+          <button 
+            type="button"
+            onClick={() => setDownloadError(null)}
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer text-sm font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Empty State */}
       {clips.length === 0 && (
