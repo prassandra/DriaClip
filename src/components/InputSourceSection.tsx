@@ -375,7 +375,8 @@ export const InputSourceSection: React.FC<InputSourceSectionProps> = ({
   };
 
   return (
-    <div id="input-section" className="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#0f172a]/95 p-5 sm:p-7 shadow-lg backdrop-blur-md transition-colors max-w-full overflow-hidden">
+    <div id="input-source" className="w-full scroll-mt-20">
+      <div id="input-section" className="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#0f172a]/95 p-5 sm:p-7 shadow-lg backdrop-blur-md transition-colors max-w-full overflow-hidden">
       {/* Tab Switcher Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200/80 dark:border-slate-800/80 pb-4">
         <div>
@@ -622,5 +623,6 @@ export const InputSourceSection: React.FC<InputSourceSectionProps> = ({
         )}
       </div>
     </div>
+  </div>
   );
 };

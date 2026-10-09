@@ -14,12 +14,32 @@ if (!fs.existsSync(CACHE_DIR)) {
 }
 
 // Locate yt-dlp binary and make sure executable
-const YT_DLP_PATH = path.resolve(process.cwd(), 'bin/yt-dlp');
-if (fs.existsSync(YT_DLP_PATH)) {
-  try {
-    fs.chmodSync(YT_DLP_PATH, 0o755);
-  } catch {}
+function getYtDlpPath(): string {
+  const candidates = [
+    '/usr/local/bin/yt-dlp',
+    path.resolve(process.cwd(), 'bin/yt-dlp'),
+    path.resolve('/app/applet/bin/yt-dlp'),
+    '/usr/bin/yt-dlp',
+    'yt-dlp',
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      try {
+        fs.chmodSync(c, 0o755);
+      } catch {}
+      return c;
+    }
+  }
+  return 'yt-dlp';
 }
+
+function getNodePath(): string {
+  if (fs.existsSync('/usr/local/bin/node')) return '/usr/local/bin/node';
+  if (fs.existsSync('/usr/bin/node')) return '/usr/bin/node';
+  return 'node';
+}
+
+const YT_DLP_PATH = getYtDlpPath();
 
 export interface RenderClipRequest {
   url?: string;
@@ -210,9 +230,10 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
     for (const attempt of formatAttempts) {
       if (downloaded) break;
 
+      const nodeRuntime = getNodePath();
       const ytDlpArgs = [
         '--js-runtimes',
-        'node:/usr/local/bin/node',
+        `node:${nodeRuntime}`,
         '--user-agent',
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
         '--referer',
@@ -261,7 +282,26 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
           downloaded = true;
           break;
         }
+
+        // Retry this format with fallback extractor-args client (web,mweb) if bot-checked
         const errOut = ytErr?.stderr || ytErr?.stdout || ytErr?.message || '';
+        if (errOut.includes('Sign in to confirm') || errOut.includes('bot')) {
+          try {
+            const fallbackArgs = [
+              ...ytDlpArgs,
+              '--extractor-args',
+              'youtube:player_client=web,mweb',
+            ];
+            await execFileAsync(YT_DLP_PATH, fallbackArgs, { timeout: ytDlpTimeoutMs });
+            const fbFound = findDownloadedRawFile();
+            if (fbFound) {
+              actualRawPath = fbFound;
+              downloaded = true;
+              break;
+            }
+          } catch {}
+        }
+
         if (errOut.includes('Video unavailable') || errOut.includes('Private video')) {
           break;
         }

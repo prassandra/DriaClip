@@ -120,343 +120,353 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
         </div>
       </div>
 
-      {/* Main 2-Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Module 1: Durasi per Klip & Custom Durasi */}
-        <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-5 sm:p-6 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-              <span>{isId ? 'Durasi per Potongan Klip' : 'Duration per Clip'}</span>
-            </label>
+      {/* Module 1: Durasi per Klip & Custom Durasi (Full Width Row) */}
+      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-5 sm:p-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+            <Clock className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <span>{isId ? 'Durasi per Potongan Klip' : 'Duration per Clip'}</span>
+          </label>
 
-            <span className="text-xs font-mono font-bold text-violet-600 dark:text-violet-400 bg-violet-100/70 dark:bg-violet-950/60 px-2.5 py-0.5 rounded-md border border-violet-200 dark:border-violet-800">
-              {currentDurationSec} {isId ? 'Detik / Klip' : 'Seconds / Clip'}
-            </span>
-          </div>
+          <span className="text-xs font-mono font-bold text-violet-600 dark:text-violet-400 bg-violet-100/70 dark:bg-violet-950/60 px-2.5 py-0.5 rounded-md border border-violet-200 dark:border-violet-800">
+            {currentDurationSec} {isId ? 'Detik / Klip' : 'Seconds / Clip'}
+          </span>
+        </div>
 
-          {/* Preset Buttons + Custom Toggle */}
-          <div className="grid grid-cols-4 gap-2">
-            {[15, 30, 60, 90].map((dur) => {
-              const isSelected = config.durationMode === 'preset' && config.presetDuration === dur;
-              return (
-                <button
-                  key={dur}
-                  type="button"
-                  onClick={() => handleSelectPreset(dur)}
-                  className={`py-3 px-2 rounded-xl border text-center transition-all cursor-pointer ${
-                    isSelected
-                      ? 'border-violet-600 bg-violet-600 text-white font-bold shadow-md shadow-violet-600/20'
-                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-violet-300 dark:hover:border-slate-700'
-                  }`}
-                >
-                  <span className="text-sm sm:text-base font-extrabold font-mono block">{dur}s</span>
-                  <span className={`text-[10px] block mt-0.5 ${isSelected ? 'text-violet-100' : 'text-slate-400'}`}>
-                    {dur === 60 ? (isId ? '1 Menit' : '1 Min') : dur === 90 ? (isId ? '1.5 Menit' : '1.5 Min') : `${dur} ${isId ? 'dtk' : 's'}`}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Custom Duration Option */}
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={handleSelectCustomMode}
-              className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                config.durationMode === 'custom'
-                  ? 'border-violet-600 bg-violet-50 dark:bg-violet-950/50 ring-2 ring-violet-500/25'
-                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-violet-300'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Sliders className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                <span className="text-xs font-bold">
-                  {isId ? 'Pilihan Custom Durasi' : 'Custom Duration'}
+        {/* Preset Buttons + Custom Toggle */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          {[15, 30, 60, 90].map((dur) => {
+            const isSelected = config.durationMode === 'preset' && config.presetDuration === dur;
+            return (
+              <button
+                key={dur}
+                type="button"
+                onClick={() => handleSelectPreset(dur)}
+                className={`py-3 px-3 rounded-xl border text-center transition-all cursor-pointer ${
+                  isSelected
+                    ? 'border-violet-600 bg-violet-600 text-white font-bold shadow-md shadow-violet-600/20'
+                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-violet-300 dark:hover:border-slate-700'
+                }`}
+              >
+                <span className="text-sm sm:text-base font-extrabold font-mono block">{dur}s</span>
+                <span className={`text-[10px] block mt-0.5 ${isSelected ? 'text-violet-100' : 'text-slate-400'}`}>
+                  {dur === 60 ? (isId ? '1 Menit' : '1 Min') : dur === 90 ? (isId ? '1.5 Menit' : '1.5 Min') : `${dur} ${isId ? 'dtk' : 's'}`}
                 </span>
-              </div>
-              <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${
-                config.durationMode === 'custom'
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-              }`}>
-                {config.durationMode === 'custom' ? `${currentDurationSec} detik` : (isId ? 'Tentukan sendiri' : 'Set custom')}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Custom Duration Option */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={handleSelectCustomMode}
+            className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer ${
+              config.durationMode === 'custom'
+                ? 'border-violet-600 bg-violet-50 dark:bg-violet-950/50 ring-2 ring-violet-500/25'
+                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-violet-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Sliders className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              <span className="text-xs font-bold">
+                {isId ? 'Pilihan Custom Durasi' : 'Custom Duration'}
               </span>
-            </button>
-
-            {config.durationMode === 'custom' && (
-              <div className="mt-2.5 p-3.5 rounded-xl border border-violet-200 dark:border-violet-900/60 bg-white dark:bg-slate-900 space-y-2.5 animate-in fade-in duration-150">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                    {isId ? 'Berapa detik per klip?' : 'Seconds per clip:'}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      min="5"
-                      max="3600"
-                      value={customInputVal}
-                      onChange={handleCustomDurationChange}
-                      className="w-24 text-center font-mono font-bold text-sm px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="60"
-                    />
-                    <span className="text-xs font-mono text-slate-500">detik</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[11px] text-slate-400 py-0.5">{isId ? 'Cepat:' : 'Quick:'}</span>
-                  {[20, 45, 60, 120, 180].map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => {
-                        setCustomInputVal(String(s));
-                        onChangeConfig({
-                          ...config,
-                          durationMode: 'custom',
-                          customDuration: s,
-                        });
-                      }}
-                      className="px-2 py-0.5 text-[11px] font-mono rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
-                    >
-                      {s >= 60 ? `${s / 60}m (${s}s)` : `${s}s`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Dynamic Automatic Clips Count Calculation Banner */}
-          {safeTotalDuration > 0 ? (
-            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 p-3 text-xs border border-emerald-200 dark:border-emerald-800/60 flex items-start gap-2.5">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white font-bold text-[10px]">
-                ✓
-              </span>
-              <div className="space-y-0.5">
-                <p className="font-bold text-emerald-900 dark:text-emerald-200">
-                  {isId 
-                    ? `Otomatis Dipotong Menjadi ${calculatedClipsCount} Klip` 
-                    : `Automatically Splits Into ${calculatedClipsCount} Clips`}
-                </p>
-                <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
-                  {isId 
-                    ? remainderSec > 0
-                      ? `Durasi video asli ${formatTimeCode(safeTotalDuration)} dibagi dinamis: ${fullClipsCount} klip (${currentDurationSec}s) + 1 klip sisa (${remainderSec}s).`
-                      : `Durasi video asli ${formatTimeCode(safeTotalDuration)} dibagi rata menjadi ${fullClipsCount} klip masing-masing ${currentDurationSec}s.`
-                    : `Duration ${formatTimeCode(safeTotalDuration)} split into ${calculatedClipsCount} clips.`}
-                </p>
-              </div>
             </div>
-          ) : (
-            <div className="rounded-xl bg-slate-100/70 dark:bg-slate-800/50 px-3.5 py-2.5 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-              <Info className="h-3.5 w-3.5 text-violet-500 shrink-0" />
-              <span>{isId ? 'Pilih atau unggah video di atas untuk melihat pembagian durasi klip otomatis.' : 'Select or upload a video above to preview clip breakdown.'}</span>
+            <span className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded ${
+              config.durationMode === 'custom'
+                ? 'bg-violet-600 text-white'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+            }`}>
+              {config.durationMode === 'custom' ? `${currentDurationSec} detik` : (isId ? 'Tentukan sendiri' : 'Set custom')}
+            </span>
+          </button>
+
+          {config.durationMode === 'custom' && (
+            <div className="mt-2.5 p-3.5 rounded-xl border border-violet-200 dark:border-violet-900/60 bg-white dark:bg-slate-900 space-y-2.5 animate-in fade-in duration-150">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isId ? 'Berapa detik per klip?' : 'Seconds per clip:'}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min="5"
+                    max="3600"
+                    value={customInputVal}
+                    onChange={handleCustomDurationChange}
+                    className="w-24 text-center font-mono font-bold text-sm px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    placeholder="60"
+                  />
+                  <span className="text-xs font-mono text-slate-500">detik</span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                <span className="text-[11px] text-slate-400 py-0.5">{isId ? 'Cepat:' : 'Quick:'}</span>
+                {[20, 45, 60, 120, 180].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      setCustomInputVal(String(s));
+                      onChangeConfig({
+                        ...config,
+                        durationMode: 'custom',
+                        customDuration: s,
+                      });
+                    }}
+                    className="px-2.5 py-1 text-[11px] font-mono rounded bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    {s >= 60 ? `${s / 60}m (${s}s)` : `${s}s`}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Module 2: Format Rasio & Tampilan Vertikal */}
-        <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-5 sm:p-6 space-y-4">
+        {/* Dynamic Automatic Clips Count Calculation Banner */}
+        {safeTotalDuration > 0 ? (
+          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 p-3.5 text-xs border border-emerald-200 dark:border-emerald-800/60 flex items-start gap-2.5">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white font-bold text-[10px]">
+              ✓
+            </span>
+            <div className="space-y-0.5">
+              <p className="font-bold text-emerald-900 dark:text-emerald-200">
+                {isId 
+                  ? `Otomatis Dipotong Menjadi ${calculatedClipsCount} Klip` 
+                  : `Automatically Splits Into ${calculatedClipsCount} Clips`}
+              </p>
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-300 leading-relaxed">
+                {isId 
+                  ? remainderSec > 0
+                    ? `Durasi video asli ${formatTimeCode(safeTotalDuration)} dibagi dinamis: ${fullClipsCount} klip (${currentDurationSec}s) + 1 klip sisa (${remainderSec}s).`
+                    : `Durasi video asli ${formatTimeCode(safeTotalDuration)} dibagi rata menjadi ${fullClipsCount} klip masing-masing ${currentDurationSec}s.`
+                  : `Duration ${formatTimeCode(safeTotalDuration)} split into ${calculatedClipsCount} clips.`}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-xl bg-slate-100/70 dark:bg-slate-800/50 px-3.5 py-2.5 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <Info className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+            <span>{isId ? 'Pilih atau unggah video di atas untuk melihat pembagian durasi klip otomatis.' : 'Select or upload a video above to preview clip breakdown.'}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Module 2: Adaptasi Rasio Aspek & Tampilan Vertikal (Dedicated Full Width Row - Lebih Lega) */}
+      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-5 sm:p-6 space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-800/60 pb-3">
           <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
             <Smartphone className="h-4 w-4 text-violet-600 dark:text-violet-400" />
             <span>{t.controls.aspectRatio}</span>
           </label>
+          <span className="text-xs font-mono font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-950/70 px-2.5 py-0.5 rounded-md border border-violet-200 dark:border-violet-800">
+            {config.aspectRatio === '9:16' ? '9:16 Vertikal' : config.aspectRatio === '16:9' ? '16:9 Horizontal' : '1:1 Persegi'}
+          </span>
+        </div>
 
-          {/* Aspect Ratio Selector */}
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { id: '9:16' as AspectRatio, label: '9:16', sub: 'TikTok / Reels / Shorts', icon: Smartphone },
-              { id: '16:9' as AspectRatio, label: '16:9', sub: 'YouTube / Monitor', icon: Monitor },
-              { id: '1:1' as AspectRatio, label: '1:1', sub: 'Instagram Feed / Square', icon: Square },
-            ].map((ratio) => {
-              const Icon = ratio.icon;
-              const isSelected = config.aspectRatio === ratio.id;
-              return (
-                <button
-                  key={ratio.id}
-                  type="button"
-                  onClick={() => updateConfig('aspectRatio', ratio.id)}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+        {/* Aspect Ratio Selector - Full Width 3 Columns with generous space */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          {[
+            { id: '9:16' as AspectRatio, label: '9:16', sub: 'TikTok / Reels / YouTube Shorts', badge: isId ? 'Paling Populer' : 'Most Popular', icon: Smartphone },
+            { id: '16:9' as AspectRatio, label: '16:9', sub: 'YouTube Standar / Monitor Layar Penuh', badge: isId ? 'Lanskap' : 'Landscape', icon: Monitor },
+            { id: '1:1' as AspectRatio, label: '1:1', sub: 'Instagram Feed / Carousel / Kotak', badge: isId ? 'Persegi' : 'Square', icon: Square },
+          ].map((ratio) => {
+            const Icon = ratio.icon;
+            const isSelected = config.aspectRatio === ratio.id;
+            return (
+              <button
+                key={ratio.id}
+                type="button"
+                onClick={() => updateConfig('aspectRatio', ratio.id)}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all cursor-pointer relative ${
+                  isSelected
+                    ? 'border-violet-600 bg-violet-50 dark:bg-violet-950/60 text-violet-900 dark:text-violet-100 ring-2 ring-violet-500/30 shadow-sm'
+                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-violet-300 dark:hover:border-slate-700'
+                }`}
+              >
+                {ratio.badge && (
+                  <span className={`absolute top-2.5 right-2.5 text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
                     isSelected
-                      ? 'border-violet-600 bg-violet-50 dark:bg-violet-950/50 text-violet-800 dark:text-violet-200 ring-2 ring-violet-500/25 shadow-xs'
-                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-violet-300 dark:hover:border-slate-700'
+                      ? 'bg-violet-600 text-white'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                  }`}>
+                    {ratio.badge}
+                  </span>
+                )}
+                <Icon className="h-6 w-6 mb-2 text-violet-600 dark:text-violet-400" />
+                <span className="text-sm font-extrabold font-mono">{ratio.label}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-snug text-center">{ratio.sub}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Framing treatment if 9:16 is selected (Spacious Full Width) */}
+        {config.aspectRatio === '9:16' && (
+          <div className="space-y-4 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                {t.controls.verticalTreatment}
+              </span>
+              <span className="text-[11px] font-mono font-bold text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-950/70 px-2.5 py-0.5 rounded border border-violet-200 dark:border-violet-800">
+                {config.verticalStyle === 'center-crop'
+                  ? (isId ? `Crop Tengah (${config.zoomOutPercent ?? 20}% Zoom-Out)` : `Center Crop (${config.zoomOutPercent ?? 20}% Zoom-Out)`)
+                  : config.verticalStyle === 'blur-background'
+                  ? (isId ? 'Latar Blur Penuh' : 'Blur Background')
+                  : (isId ? 'Bilah Hitam' : 'Letterbox')}
+              </span>
+            </div>
+
+            {/* 3 Clear Vertical Modes: Crop Tengah Zoom-Out, Latar Blur, Bilah Hitam */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
+              {[
+                { 
+                  id: 'center-crop' as VerticalStyle, 
+                  label: isId ? 'Crop Tengah (Zoom-Out)' : 'Center Crop (Zoomed-Out)', 
+                  badge: isId ? 'Pas & Luas' : 'Recommended',
+                  desc: isId ? 'Frame pas di tengah (50%), di-zoom out proporsional agar tidak terlalu sempit dan tanpa stretch sama sekali' : 'Centered framing, comfortably zoomed out without tight crop or stretch',
+                  highlight: true 
+                },
+                { 
+                  id: 'blur-background' as VerticalStyle, 
+                  label: isId ? 'Latar Blur Penuh' : 'Full Blur Background', 
+                  badge: isId ? '100% Utuh' : 'Full View',
+                  desc: isId ? 'Video 16:9 asli utuh di tengah tanpa terpotong sampingnya, dengan latar blur bergerak di atas & bawah' : 'Full 16:9 width centered with blurred backdrop',
+                  highlight: false
+                },
+                { 
+                  id: 'letterbox' as VerticalStyle, 
+                  label: isId ? 'Bilah Hitam (Letterbox)' : 'Letterbox Bars', 
+                  badge: isId ? 'Sinematik' : 'Classic',
+                  desc: isId ? 'Video 16:9 utuh di tengah dengan bilah hitam sinematik rapi di bagian atas & bawah' : 'Centered with clean black bars',
+                  highlight: false
+                },
+              ].map((style) => (
+                <button
+                  key={style.id}
+                  type="button"
+                  onClick={() => updateConfig('verticalStyle', style.id)}
+                  className={`p-4 rounded-xl transition-all text-left cursor-pointer font-medium leading-normal border relative flex flex-col justify-between gap-2.5 ${
+                    config.verticalStyle === style.id
+                      ? 'bg-violet-600 text-white font-bold border-violet-600 shadow-md ring-2 ring-violet-500/25'
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-slate-800 hover:border-violet-300'
                   }`}
                 >
-                  <Icon className="h-5 w-5 mb-1.5 text-violet-600 dark:text-violet-400" />
-                  <span className="text-xs font-bold font-mono">{ratio.label}</span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight text-center line-clamp-1">{ratio.sub}</span>
+                  <div className="flex items-center justify-between w-full">
+                    <span className="block font-bold text-xs sm:text-sm">{style.label}</span>
+                    {style.badge && (
+                      <span className={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
+                        config.verticalStyle === style.id
+                          ? 'bg-violet-800 text-violet-100'
+                          : style.highlight
+                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                      }`}>
+                        {style.badge}
+                      </span>
+                    )}
+                  </div>
+                  <span className={`text-[11px] leading-relaxed ${config.verticalStyle === style.id ? 'text-violet-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                    {style.desc}
+                  </span>
                 </button>
-              );
-            })}
-          </div>
-
-          {/* Framing treatment if 9:16 is selected */}
-          {config.aspectRatio === '9:16' && (
-            <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
-                  {t.controls.verticalTreatment}
-                </span>
-                <span className="text-[10px] font-mono font-bold text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-950/70 px-2 py-0.5 rounded">
-                  {config.verticalStyle === 'center-crop'
-                    ? (isId ? `Crop Tengah (${config.zoomOutPercent ?? 20}% Zoom-Out)` : `Center Crop (${config.zoomOutPercent ?? 20}% Zoom-Out)`)
-                    : config.verticalStyle === 'blur-background'
-                    ? (isId ? 'Latar Blur Penuh' : 'Blur Background')
-                    : (isId ? 'Bilah Hitam' : 'Letterbox')}
-                </span>
-              </div>
-
-              {/* 3 Clear Vertical Modes: Crop Tengah Zoom-Out, Latar Blur, Bilah Hitam */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                {[
-                  { 
-                    id: 'center-crop' as VerticalStyle, 
-                    label: isId ? 'Crop Tengah (Zoom-Out)' : 'Center Crop (Zoomed-Out)', 
-                    badge: isId ? 'Pas & Luas' : 'Recommended',
-                    desc: isId ? 'Frame pas di tengah (50%), di-zoom out proporsional agar tidak terlalu sempit dan tanpa stretch' : 'Centered framing, comfortably zoomed out without tight crop or stretch',
-                    highlight: true 
-                  },
-                  { 
-                    id: 'blur-background' as VerticalStyle, 
-                    label: isId ? 'Latar Blur Penuh' : 'Full Blur Background', 
-                    badge: isId ? '100% Utuh' : 'Full View',
-                    desc: isId ? 'Video 16:9 utuh di tengah tanpa terpotong, dengan latar blur atas & bawah' : 'Full 16:9 width centered with blurred backdrop',
-                    highlight: false
-                  },
-                  { 
-                    id: 'letterbox' as VerticalStyle, 
-                    label: isId ? 'Bilah Hitam' : 'Letterbox Bars', 
-                    badge: isId ? 'Sinematik' : 'Classic',
-                    desc: isId ? 'Video di tengah dengan bilah hitam atas & bawah' : 'Centered with clean black bars',
-                    highlight: false
-                  },
-                ].map((style) => (
-                  <button
-                    key={style.id}
-                    type="button"
-                    onClick={() => updateConfig('verticalStyle', style.id)}
-                    className={`p-3 rounded-xl transition-all text-left cursor-pointer font-medium leading-tight border relative flex flex-col justify-between gap-1.5 ${
-                      config.verticalStyle === style.id
-                        ? 'bg-violet-600 text-white font-bold border-violet-600 shadow-md ring-2 ring-violet-500/20'
-                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-slate-800 hover:border-violet-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="block font-bold text-xs sm:text-[13px]">{style.label}</span>
-                      {style.badge && (
-                        <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
-                          config.verticalStyle === style.id
-                            ? 'bg-violet-800 text-violet-100'
-                            : style.highlight
-                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                        }`}>
-                          {style.badge}
-                        </span>
-                      )}
-                    </div>
-                    <span className={`text-[11px] leading-tight ${config.verticalStyle === style.id ? 'text-violet-100' : 'text-slate-500 dark:text-slate-400'}`}>
-                      {style.desc}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Informative Banner & Zoom-Out Controls based on Selected Mode */}
-              {config.verticalStyle === 'center-crop' && (
-                <div className="rounded-xl bg-violet-500/10 dark:bg-violet-950/40 border border-violet-500/30 p-3.5 space-y-3 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-violet-800 dark:text-violet-300 font-bold text-xs">
-                      <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                      <span>{isId ? 'Tingkat Zoom-Out Frame (Bebas Stretch)' : 'Frame Zoom-Out Level (No Stretch)'}</span>
-                    </div>
-                    <span className="text-xs font-mono font-bold text-violet-600 dark:text-violet-400 bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-violet-200 dark:border-violet-800">
-                      {config.zoomOutPercent ?? 20}% Zoom-Out
-                    </span>
-                  </div>
-
-                  {/* Preset Pills */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 shrink-0">{isId ? 'Preset:' : 'Preset:'}</span>
-                    {[
-                      { val: 10, label: isId ? '10% (Rapat)' : '10% (Close)' },
-                      { val: 20, label: isId ? '20% (Nyaman / Pas)' : '20% (Optimal)' },
-                      { val: 30, label: isId ? '30% (Luas)' : '30% (Wide)' },
-                    ].map((p) => (
-                      <button
-                        key={p.val}
-                        type="button"
-                        onClick={() => updateConfig('zoomOutPercent', p.val)}
-                        className={`px-2.5 py-1 text-[11px] font-mono rounded-lg transition-colors cursor-pointer ${
-                          (config.zoomOutPercent ?? 20) === p.val
-                            ? 'bg-violet-600 text-white font-bold shadow-xs'
-                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-violet-100 dark:hover:bg-violet-900/40 border border-slate-200 dark:border-slate-700'
-                        }`}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Range Slider */}
-                  <div className="space-y-1">
-                    <input
-                      type="range"
-                      min={5}
-                      max={40}
-                      step={1}
-                      value={config.zoomOutPercent ?? 20}
-                      onChange={(e) => updateConfig('zoomOutPercent', parseInt(e.target.value, 10))}
-                      className="w-full accent-violet-600 cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg"
-                    />
-                    <div className="flex justify-between text-[10px] text-slate-400 font-mono">
-                      <span>{isId ? '5% (Lebih Fokus)' : '5% (Focused)'}</span>
-                      <span>{isId ? '40% (Lebih Luas)' : '40% (Broader View)'}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed border-t border-violet-500/20 pt-2">
-                    {isId 
-                      ? '✓ Kamera tetap tenang di tengah (50%). Zoom-out memperluas bidang pandang secara proporsional agar subjek dan kepala tidak terasa terlalu dekat/sempit (fit) dan tanpa deformasi/stretch sama sekali.' 
-                      : '✓ The camera remains locked in the center (50%). Zoom-out broadens the field of view proportionally so the talent is not cramped or stretched.'}
-                  </p>
-                </div>
-              )}
-
-              {config.verticalStyle === 'blur-background' && (
-                <div className="rounded-xl bg-sky-500/10 dark:bg-sky-950/40 border border-sky-500/30 p-3 space-y-1.5 animate-in fade-in duration-200">
-                  <div className="flex items-center gap-2 text-sky-800 dark:text-sky-300 font-bold text-xs">
-                    <Video className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
-                    <span>{isId ? 'Mode Latar Blur Penuh Aktif' : 'Full Blur Background Mode Active'}</span>
-                  </div>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                    {isId 
-                      ? 'Seluruh video asli 16:9 tetap utuh di tengah tanpa terpotong sampingnya, dengan latar belakang video yang dibesarkan dan diburamkan secara artistik di bagian atas dan bawah.' 
-                      : 'The full 16:9 video is centered without cropping edges, backed by an enlarged, artistically blurred video layer on the top and bottom.'}
-                  </p>
-                </div>
-              )}
-
-              {config.verticalStyle === 'letterbox' && (
-                <div className="rounded-xl bg-slate-500/10 dark:bg-slate-800/40 border border-slate-500/30 p-3 space-y-1.5 animate-in fade-in duration-200">
-                  <div className="flex items-center gap-2 text-slate-800 dark:text-slate-300 font-bold text-xs">
-                    <Monitor className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400 shrink-0" />
-                    <span>{isId ? 'Mode Bilah Hitam (Letterbox) Aktif' : 'Letterbox Black Bars Mode Active'}</span>
-                  </div>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                    {isId 
-                      ? 'Video 16:9 ditampilkan utuh di tengah layar dengan bilah hitam sinematik di bagian atas dan bawah frame 9:16.' 
-                      : 'The 16:9 video is presented fully centered with classic black letterbox bars at the top and bottom of the vertical 9:16 frame.'}
-                  </p>
-                </div>
-              )}
+              ))}
             </div>
-          )}
-        </div>
+
+            {/* Informative Banner & Zoom-Out Controls based on Selected Mode (Full Width) */}
+            {config.verticalStyle === 'center-crop' && (
+              <div className="rounded-xl bg-violet-500/10 dark:bg-violet-950/40 border border-violet-500/30 p-4 space-y-3.5 animate-in fade-in duration-200">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-violet-800 dark:text-violet-300 font-bold text-xs">
+                    <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0" />
+                    <span>{isId ? 'Tingkat Zoom-Out Frame (Bebas Stretch & Lebih Luas)' : 'Frame Zoom-Out Level (No Stretch & Wider Perspective)'}</span>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-violet-700 dark:text-violet-300 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-violet-200 dark:border-violet-800 shadow-xs">
+                    {config.zoomOutPercent ?? 20}% Zoom-Out
+                  </span>
+                </div>
+
+                {/* Preset Pills */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0 font-medium">{isId ? 'Pilihan Cepat:' : 'Quick Presets:'}</span>
+                  {[
+                    { val: 10, label: isId ? '10% (Fokus Rapat)' : '10% (Close)' },
+                    { val: 20, label: isId ? '20% (Nyaman & Pas - Default)' : '20% (Optimal Default)' },
+                    { val: 30, label: isId ? '30% (Ekstra Luas)' : '30% (Wide)' },
+                  ].map((p) => (
+                    <button
+                      key={p.val}
+                      type="button"
+                      onClick={() => updateConfig('zoomOutPercent', p.val)}
+                      className={`px-3 py-1.5 text-xs font-mono rounded-lg transition-colors cursor-pointer ${
+                        (config.zoomOutPercent ?? 20) === p.val
+                          ? 'bg-violet-600 text-white font-bold shadow-xs'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-violet-100 dark:hover:bg-violet-900/40 border border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Range Slider */}
+                <div className="space-y-1.5 pt-1">
+                  <input
+                    type="range"
+                    min={5}
+                    max={40}
+                    step={1}
+                    value={config.zoomOutPercent ?? 20}
+                    onChange={(e) => updateConfig('zoomOutPercent', parseInt(e.target.value, 10))}
+                    className="w-full accent-violet-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                  />
+                  <div className="flex justify-between text-[11px] text-slate-400 font-mono">
+                    <span>{isId ? '5% (Lebih Fokus)' : '5% (Focused)'}</span>
+                    <span>{isId ? '40% (Maksimal Luas)' : '40% (Max View)'}</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed border-t border-violet-500/20 pt-2.5">
+                  {isId 
+                    ? '✓ Posisi framing tetap terkunci di titik tengah (50%). Zoom-out memperluas ruang pandang subjek secara proporsional sehingga kepala dan bahu tidak terpotong sempit, tanpa deformasi atau distorsi sedikitpun.' 
+                    : '✓ Framing remains locked at the exact center (50%). Zoom-out proportionally expands the field of view so the subject is never cramped, with zero stretching or distortion.'}
+                </p>
+              </div>
+            )}
+
+            {config.verticalStyle === 'blur-background' && (
+              <div className="rounded-xl bg-sky-500/10 dark:bg-sky-950/40 border border-sky-500/30 p-4 space-y-2 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-sky-800 dark:text-sky-300 font-bold text-xs">
+                  <Video className="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0" />
+                  <span>{isId ? 'Mode Latar Blur Penuh Aktif' : 'Full Blur Background Mode Active'}</span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {isId 
+                    ? 'Seluruh video asli 16:9 tetap utuh di tengah tanpa terpotong sampingnya, dengan latar belakang video yang dibesarkan dan diburamkan secara artistik di bagian atas dan bawah.' 
+                    : 'The full 16:9 video is centered without cropping edges, backed by an enlarged, artistically blurred video layer on the top and bottom.'}
+                </p>
+              </div>
+            )}
+
+            {config.verticalStyle === 'letterbox' && (
+              <div className="rounded-xl bg-slate-500/10 dark:bg-slate-800/40 border border-slate-500/30 p-4 space-y-2 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-slate-800 dark:text-slate-300 font-bold text-xs">
+                  <Monitor className="h-4 w-4 text-slate-600 dark:text-slate-400 shrink-0" />
+                  <span>{isId ? 'Mode Bilah Hitam (Letterbox) Aktif' : 'Letterbox Black Bars Mode Active'}</span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {isId 
+                    ? 'Video 16:9 ditampilkan utuh di tengah layar dengan bilah hitam sinematik di bagian atas dan bawah frame 9:16.' 
+                    : 'The 16:9 video is presented fully centered with classic black letterbox bars at the top and bottom of the vertical 9:16 frame.'}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Module 3: Pilihan Resolusi Ekspor — Clean, Direct, and Minimalist (1080p, 720p, 480p, 360p) */}

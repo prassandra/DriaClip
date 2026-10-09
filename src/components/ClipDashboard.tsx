@@ -1056,29 +1056,48 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
       </div>
 
       {downloadError && (
-        <div className="flex flex-col sm:flex-row items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-600 dark:text-red-400">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-          <div className="flex-1 space-y-2">
+        <div className="flex flex-col sm:flex-row items-start gap-3.5 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-600 dark:text-red-400">
+          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-red-500" />
+          <div className="flex-1 space-y-2.5">
             <div>
-              <span className="font-semibold block">{isId ? 'Gagal Mengunduh Klip:' : 'Failed to Download Clip:'}</span>
-              <p className="mt-0.5 text-slate-700 dark:text-slate-300">{downloadError}</p>
+              <span className="font-bold text-sm block text-red-700 dark:text-red-300">
+                {isId ? 'Gagal Mengunduh Klip' : 'Failed to Download Clip'}
+              </span>
+              <p className="mt-1 text-slate-700 dark:text-slate-300 leading-relaxed font-mono text-[11px] bg-red-50 dark:bg-red-950/40 p-2.5 rounded-lg border border-red-200 dark:border-red-900/50">
+                {downloadError}
+              </p>
             </div>
-            {downloadError.includes('YOUTUBE_BOT_PROTECTION') && (
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <a
-                  href="#input-source"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold text-[11px] shadow-xs cursor-pointer transition-colors"
-                >
-                  <FileVideo className="h-3.5 w-3.5" />
-                  <span>{isId ? 'Unggah File Video (MP4/WebM) Langsung' : 'Upload Video File (MP4/WebM)'}</span>
-                </a>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              <a
+                href="#input-source"
+                onClick={() => {
+                  const el = document.getElementById('input-source');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-xs cursor-pointer transition-colors"
+              >
+                <FileVideo className="h-3.5 w-3.5" />
+                <span>{isId ? 'Unggah File Video (MP4/WebM) Langsung' : 'Upload Video File Directly'}</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setDownloadError(null);
+                  if (clips.length > 0) {
+                    handleDownloadSingle(clips[0]);
+                  }
+                }}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs cursor-pointer transition-colors"
+              >
+                <span>{isId ? 'Coba Unduh Lagi' : 'Retry Download'}</span>
+              </button>
+            </div>
           </div>
           <button 
             type="button"
             onClick={() => setDownloadError(null)}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer text-sm font-bold"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer text-base font-bold p-1 rounded-md"
+            title={isId ? 'Tutup pesan' : 'Dismiss'}
           >
             ✕
           </button>
