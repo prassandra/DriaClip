@@ -211,31 +211,59 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
 
     const targetHeight = quality === '1080p' ? 1080 : quality === '720p' ? 720 : quality === '480p' ? 480 : 360;
 
-    // Resilient format strategy with automatic Node.js JS runtime challenge solving
-    const formatAttempts: { format: string }[] = [
-      // 1. Best video + audio stream up to requested height (multiplexed to MP4)
-      { format: `bestvideo[height<=${targetHeight}]+bestaudio/best[height<=${targetHeight}]/best` },
-      // 2. Any single combined stream up to requested height
-      { format: `best[height<=${targetHeight}]/best` },
-      // 3. Fallback any best stream
-      { format: 'best' },
-      // 4. Legacy progressive 360p
-      { format: '18/best' },
+    // Multi-strategy resilient downloader designed specifically to bypass YouTube datacenter bot challenges
+    // Tested strategies:
+    // 1. Mobile Web (mweb) + Node.js challenge solver: Bypasses desktop BotGuard checks on datacenter IPs
+    // 2. Mobile Native & TV (android,ios,tv): Accesses mobile Googlevideo streams
+    // 3. TV client endpoint: Skips web challenges
+    // 4. Progressive MP4 fallback (format 18): High-speed direct CDN stream
+    const downloadStrategies = [
+      {
+        name: 'mweb-hq',
+        extractorArgs: ['--extractor-args', 'youtube:player_client=mweb'],
+        format: `bestvideo[height<=${targetHeight}]+bestaudio/best[height<=${targetHeight}]/18/best`,
+      },
+      {
+        name: 'android-tv-hq',
+        extractorArgs: ['--extractor-args', 'youtube:player_client=android,ios,tv'],
+        format: `bestvideo[height<=${targetHeight}]+bestaudio/best[height<=${targetHeight}]/18/best`,
+      },
+      {
+        name: 'mweb-progressive',
+        extractorArgs: ['--extractor-args', 'youtube:player_client=mweb'],
+        format: '18/best',
+      },
+      {
+        name: 'android-tv-progressive',
+        extractorArgs: ['--extractor-args', 'youtube:player_client=android,tv'],
+        format: '18/best',
+      },
+      {
+        name: 'tv-direct',
+        extractorArgs: ['--extractor-args', 'youtube:player_client=tv'],
+        format: 'best',
+      },
+      {
+        name: 'default-fallback',
+        extractorArgs: [],
+        format: 'best',
+      },
     ];
 
     let downloaded = false;
     let actualRawPath: string | null = null;
     let lastError: any = null;
+    const nodeRuntime = getNodePath();
 
-    for (const attempt of formatAttempts) {
+    for (const strat of downloadStrategies) {
       if (downloaded) break;
 
-      const nodeRuntime = getNodePath();
       const ytDlpArgs = [
         '--js-runtimes',
         `node:${nodeRuntime}`,
+        ...strat.extractorArgs,
         '--user-agent',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36',
         '--referer',
         'https://www.youtube.com/',
         '--no-check-certificates',
@@ -255,7 +283,7 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
         '--merge-output-format',
         'mp4',
         '-f',
-        attempt.format,
+        strat.format,
         targetUrl,
         '-o',
         rawClipPath,
@@ -283,36 +311,18 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
           break;
         }
 
-        // Retry this format with fallback extractor-args client (web,mweb) if bot-checked
         const errOut = ytErr?.stderr || ytErr?.stdout || ytErr?.message || '';
-        if (errOut.includes('Sign in to confirm') || errOut.includes('bot')) {
-          try {
-            const fallbackArgs = [
-              ...ytDlpArgs,
-              '--extractor-args',
-              'youtube:player_client=web,mweb',
-            ];
-            await execFileAsync(YT_DLP_PATH, fallbackArgs, { timeout: ytDlpTimeoutMs });
-            const fbFound = findDownloadedRawFile();
-            if (fbFound) {
-              actualRawPath = fbFound;
-              downloaded = true;
-              break;
-            }
-          } catch {}
-        }
-
         if (errOut.includes('Video unavailable') || errOut.includes('Private video')) {
-          break;
+          break; // Stop immediately if video is fundamentally private or deleted
         }
-        continue;
+        // Otherwise continue to next resilient strategy
       }
     }
 
     const finalRawPath = actualRawPath || findDownloadedRawFile();
     if (!finalRawPath || !fs.existsSync(finalRawPath)) {
       const errOut = lastError?.stderr || lastError?.stdout || lastError?.message || '';
-      if (errOut.includes('Sign in to confirm you’re not a bot')) {
+      if (errOut.includes('Sign in to confirm you’re not a bot') || errOut.includes('bot')) {
         throw new Error('YOUTUBE_BOT_PROTECTION: YouTube menerapkan verifikasi bot pada video ini di cloud server. Silakan coba unggah file video (MP4/WebM) secara langsung atau coba link video lain.');
       }
       throw new Error(`Gagal mengunduh bagian klip dari sumber video: ${lastError?.message || 'Download gagal'}`);

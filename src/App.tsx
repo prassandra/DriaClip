@@ -434,7 +434,6 @@ export default function App() {
         return;
       } catch (err: any) {
         console.error('Server render error:', err);
-        alert(isId ? `Gagal memproses klip video: ${err?.message || 'Error server'}` : `Failed to render clip: ${err?.message || 'Server error'}`);
         return;
       }
     }
@@ -472,8 +471,31 @@ export default function App() {
         downloadClipAsMp4(clip, undefined, res.extension);
       } catch (err: any) {
         console.error('Direct slice error:', err);
-        alert(isId ? `Gagal memotong video: ${err?.message || 'Error'}` : `Failed to slice video: ${err?.message || 'Error'}`);
       }
+    }
+  };
+
+  const handleSelectSampleVideo = (sample: any) => {
+    setCurrentSource(sample);
+    if (sample.presetHighlights && sample.presetHighlights.length > 0) {
+      const mappedClips: GeneratedClip[] = sample.presetHighlights.map((h: any, idx: number) => ({
+        id: `clip-${sample.id}-${idx + 1}`,
+        title: h.title,
+        hookText: h.hookText,
+        startTime: h.startTime,
+        endTime: h.endTime,
+        duration: Math.max(1, h.endTime - h.startTime),
+        score: h.score,
+        aspectRatio: config.aspectRatio,
+        verticalStyle: config.verticalStyle,
+        zoomOutPercent: config.zoomOutPercent ?? 20,
+        cropPositionX: 50,
+        tags: h.tags,
+        watermark: config.watermark,
+        watermarkPosition: config.watermarkPosition,
+        exportQuality: config.exportQuality,
+      }));
+      setGeneratedClips(mappedClips);
     }
   };
 
@@ -632,6 +654,7 @@ export default function App() {
               onPreviewClip={(clip) => setPreviewClip(clip)}
               onFineTuneClip={(clip) => setFineTuneClip(clip)}
               onUpdateClipCrop={handleUpdateClipCrop}
+              onSelectSampleVideo={handleSelectSampleVideo}
               lang={lang}
             />
 
@@ -652,6 +675,7 @@ export default function App() {
               onPreviewClip={(clip) => setPreviewClip(clip)}
               onFineTuneClip={(clip) => setFineTuneClip(clip)}
               onUpdateClipCrop={handleUpdateClipCrop}
+              onSelectSampleVideo={handleSelectSampleVideo}
               lang={lang}
             />
           </div>

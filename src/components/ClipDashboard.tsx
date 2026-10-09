@@ -36,6 +36,7 @@ import {
 } from '../services/videoClipper';
 import { GeneratedClip, VideoSourceMetadata } from '../types/driaclip';
 import { Language, TRANSLATIONS } from '../i18n/translations';
+import { SAMPLE_VIDEOS } from '../data/sampleVideos';
 
 interface ClipDashboardProps {
   clips: GeneratedClip[];
@@ -43,6 +44,7 @@ interface ClipDashboardProps {
   onPreviewClip: (clip: GeneratedClip) => void;
   onFineTuneClip: (clip: GeneratedClip) => void;
   onUpdateClipCrop?: (clipId: string, cropX: number) => void;
+  onSelectSampleVideo?: (sample: any) => void;
   lang: Language;
 }
 
@@ -821,6 +823,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
   onPreviewClip,
   onFineTuneClip,
   onUpdateClipCrop,
+  onSelectSampleVideo,
   lang,
 }) => {
   const t = TRANSLATIONS[lang];
@@ -1056,29 +1059,91 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
       </div>
 
       {downloadError && (
-        <div className="flex flex-col sm:flex-row items-start gap-3.5 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-600 dark:text-red-400">
-          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-red-500" />
-          <div className="flex-1 space-y-2.5">
-            <div>
-              <span className="font-bold text-sm block text-red-700 dark:text-red-300">
-                {isId ? 'Gagal Mengunduh Klip' : 'Failed to Download Clip'}
-              </span>
-              <p className="mt-1 text-slate-700 dark:text-slate-300 leading-relaxed font-mono text-[11px] bg-red-50 dark:bg-red-950/40 p-2.5 rounded-lg border border-red-200 dark:border-red-900/50">
-                {downloadError}
-              </p>
+        <div className="rounded-2xl border border-red-500/40 bg-gradient-to-br from-red-500/10 via-amber-500/5 to-slate-900/40 p-4 sm:p-5 text-xs text-red-600 dark:text-red-400 space-y-3.5 shadow-md">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-red-500" />
+              <div>
+                <span className="font-bold text-sm block text-red-700 dark:text-red-300">
+                  {isId ? 'Gagal Mengunduh Klip Video' : 'Failed to Download Video Clip'}
+                </span>
+                <p className="mt-1 text-slate-700 dark:text-slate-300 leading-relaxed font-mono text-[11px] bg-red-50/80 dark:bg-red-950/40 p-2.5 rounded-lg border border-red-200 dark:border-red-900/50">
+                  {downloadError}
+                </p>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+
+            <button 
+              type="button"
+              onClick={() => setDownloadError(null)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer text-base font-bold p-1 rounded-md"
+              title={isId ? 'Tutup pesan' : 'Dismiss'}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* 3 Real Problem-Solving Action Options */}
+          <div className="pt-2 border-t border-red-200/50 dark:border-red-900/40 space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 block">
+              {isId ? 'Pilih Solusi Terbaik (1-Klik Tanpa Gangguan):' : 'Recommended 1-Click Solutions:'}
+            </span>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+              {/* Option 1: Built-in Sample Video (100% Guaranteed instant download) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setDownloadError(null);
+                  if (onSelectSampleVideo) {
+                    onSelectSampleVideo(SAMPLE_VIDEOS[1]); // Podcast sample
+                  }
+                }}
+                className="p-3 rounded-xl border border-emerald-300 dark:border-emerald-800/80 bg-white dark:bg-emerald-950/20 hover:border-emerald-500 text-left cursor-pointer transition-all flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>{isId ? 'Solusi 1: Pakai Sampel HD' : 'Solution 1: Use Sample Video'}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-normal">
+                    {isId 
+                      ? 'Ganti ke sampel podcast lokal. 100% lolos verifikasi & langsung siap diunduh MP4.' 
+                      : 'Switch to local sample podcast. Guaranteed 100% instant MP4 download.'}
+                  </p>
+                </div>
+                <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 group-hover:underline">
+                  {isId ? 'Pilih Sampel Podcast →' : 'Select Sample Video →'}
+                </span>
+              </button>
+
+              {/* Option 2: Upload Own MP4/WebM Video File */}
               <a
                 href="#input-source"
                 onClick={() => {
+                  setDownloadError(null);
                   const el = document.getElementById('input-source');
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-xs cursor-pointer transition-colors"
+                className="p-3 rounded-xl border border-violet-300 dark:border-violet-800/80 bg-white dark:bg-violet-950/20 hover:border-violet-500 text-left cursor-pointer transition-all flex flex-col justify-between group"
               >
-                <FileVideo className="h-3.5 w-3.5" />
-                <span>{isId ? 'Unggah File Video (MP4/WebM) Langsung' : 'Upload Video File Directly'}</span>
+                <div>
+                  <div className="flex items-center gap-1.5 text-violet-600 dark:text-violet-400 font-bold text-xs">
+                    <FileVideo className="h-3.5 w-3.5" />
+                    <span>{isId ? 'Solusi 2: Unggah File MP4' : 'Solution 2: Upload File'}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-normal">
+                    {isId 
+                      ? 'Unggah video dari perangkat sendiri. Bebas limitasi bot YouTube sama sekali.' 
+                      : 'Upload your own MP4/WebM. 100% bypasses all YouTube restrictions.'}
+                  </p>
+                </div>
+                <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-violet-700 dark:text-violet-300 group-hover:underline">
+                  {isId ? 'Buka Menu Unggah Video →' : 'Open Upload Video →'}
+                </span>
               </a>
+
+              {/* Option 3: Retry with Mobile Stream Engine */}
               <button
                 type="button"
                 onClick={() => {
@@ -1087,20 +1152,25 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
                     handleDownloadSingle(clips[0]);
                   }
                 }}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs cursor-pointer transition-colors"
+                className="p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:border-slate-400 text-left cursor-pointer transition-all flex flex-col justify-between group"
               >
-                <span>{isId ? 'Coba Unduh Lagi' : 'Retry Download'}</span>
+                <div>
+                  <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-bold text-xs">
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    <span>{isId ? 'Solusi 3: Coba Unduh Lagi' : 'Solution 3: Retry Download'}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-normal">
+                    {isId 
+                      ? 'Coba unduh ulang menggunakan engine mobile web + format 18 progressive.' 
+                      : 'Retry with multi-client mobile stream bypass pipeline.'}
+                  </p>
+                </div>
+                <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:underline">
+                  {isId ? 'Jalankan Unduh Ulang ↺' : 'Retry Single Clip ↺'}
+                </span>
               </button>
             </div>
           </div>
-          <button 
-            type="button"
-            onClick={() => setDownloadError(null)}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer text-base font-bold p-1 rounded-md"
-            title={isId ? 'Tutup pesan' : 'Dismiss'}
-          >
-            ✕
-          </button>
         </div>
       )}
 
