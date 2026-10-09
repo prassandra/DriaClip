@@ -200,7 +200,32 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
     } catch {}
   }
 
+  // 1b. Check if local video file matching YouTube ID or filename already exists on server
+  const effectiveYtId = youtubeId || (targetUrl.match(/(?:v=|youtu\.be\/|\/shorts\/)([^"&?/\s]{11})/i)?.[1]);
+  if (effectiveYtId) {
+    const searchDirs = [
+      process.cwd(),
+      path.join(process.cwd(), 'public', 'samples'),
+      CACHE_DIR,
+    ];
+    for (const sDir of searchDirs) {
+      if (fs.existsSync(sDir)) {
+        try {
+          const files = fs.readdirSync(sDir);
+          for (const f of files) {
+            if (f.includes(effectiveYtId) && (f.endsWith('.mp4') || f.endsWith('.webm') || f.endsWith('.mkv'))) {
+              localSamplePath = path.join(sDir, f);
+              break;
+            }
+          }
+        } catch {}
+        if (localSamplePath) break;
+      }
+    }
+  }
+
   if (localSamplePath && fs.existsSync(localSamplePath)) {
+    console.log(`[DriaClip] Using local matched video for ${effectiveYtId || targetUrl}: ${localSamplePath}`);
     return await handleRenderLocalClip(localSamplePath, body);
   }
 
@@ -323,9 +348,19 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
     if (!finalRawPath || !fs.existsSync(finalRawPath)) {
       const errOut = lastError?.stderr || lastError?.stdout || lastError?.message || '';
       if (errOut.includes('Sign in to confirm you’re not a bot') || errOut.includes('bot')) {
-        throw new Error('YOUTUBE_BOT_PROTECTION: YouTube menerapkan verifikasi bot pada video ini di cloud server. Silakan coba unggah file video (MP4/WebM) secara langsung atau coba link video lain.');
+        throw new Error('YOUTUBE_BOT_PROTECTION: YouTube menerapkan proteksi bot pada cloud server. Pasang Cookie YouTube (cookies.txt) melalui menu "Cookie YouTube" di atas atau unduh video di perangkat Anda lalu unggah file MP4.');
       }
       throw new Error(`Gagal mengunduh bagian klip dari sumber video: ${lastError?.message || 'Download gagal'}`);
+    }
+
+    // Cache master raw video for future clips from same video
+    if (effectiveYtId) {
+      try {
+        const cachedMaster = path.join(CACHE_DIR, `${effectiveYtId}_master.mp4`);
+        if (!fs.existsSync(cachedMaster)) {
+          fs.copyFileSync(finalRawPath, cachedMaster);
+        }
+      } catch {}
     }
 
     // 2. Determine target width & height

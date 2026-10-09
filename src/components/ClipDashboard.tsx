@@ -22,7 +22,8 @@ import {
   X,
   AlertCircle,
   FileVideo,
-  MoveHorizontal
+  MoveHorizontal,
+  Cookie
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { 
@@ -46,6 +47,7 @@ interface ClipDashboardProps {
   onUpdateClipCrop?: (clipId: string, cropX: number) => void;
   onSelectSampleVideo?: (sample: any) => void;
   lang: Language;
+  onOpenYouTubeCookiesModal?: () => void;
 }
 
 interface ClipCardItemProps {
@@ -825,6 +827,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
   onUpdateClipCrop,
   onSelectSampleVideo,
   lang,
+  onOpenYouTubeCookiesModal,
 }) => {
   const t = TRANSLATIONS[lang];
   const isId = lang === 'id';
@@ -1090,30 +1093,30 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
             </span>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-              {/* Option 1: Built-in Sample Video (100% Guaranteed instant download) */}
+              {/* Option 1: YouTube Cookies Setup (Direct Fix) */}
               <button
                 type="button"
                 onClick={() => {
                   setDownloadError(null);
-                  if (onSelectSampleVideo) {
-                    onSelectSampleVideo(SAMPLE_VIDEOS[1]); // Podcast sample
+                  if (onOpenYouTubeCookiesModal) {
+                    onOpenYouTubeCookiesModal();
                   }
                 }}
-                className="p-3 rounded-xl border border-emerald-300 dark:border-emerald-800/80 bg-white dark:bg-emerald-950/20 hover:border-emerald-500 text-left cursor-pointer transition-all flex flex-col justify-between group"
+                className="p-3 rounded-xl border border-amber-300 dark:border-amber-800/80 bg-white dark:bg-amber-950/20 hover:border-amber-500 text-left cursor-pointer transition-all flex flex-col justify-between group shadow-xs"
               >
                 <div>
-                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    <span>{isId ? 'Solusi 1: Pakai Sampel HD' : 'Solution 1: Use Sample Video'}</span>
+                  <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-bold text-xs">
+                    <Cookie className="h-4 w-4" />
+                    <span>{isId ? 'Solusi 1: Pasang Cookie YouTube' : 'Solution 1: Setup YouTube Cookie'}</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-normal">
                     {isId 
-                      ? 'Ganti ke sampel podcast lokal. 100% lolos verifikasi & langsung siap diunduh MP4.' 
-                      : 'Switch to local sample podcast. Guaranteed 100% instant MP4 download.'}
+                      ? 'Tempelkan cookie akun YouTube (format Netscape). Server cloud langsung bebas blokir bot & unduh klip lancar.' 
+                      : 'Provide YouTube cookies (Netscape format) to permanently bypass server bot checks.'}
                   </p>
                 </div>
-                <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 group-hover:underline">
-                  {isId ? 'Pilih Sampel Podcast →' : 'Select Sample Video →'}
+                <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 group-hover:underline">
+                  {isId ? 'Buka Pengaturan Cookie →' : 'Open Cookie Settings →'}
                 </span>
               </button>
 
@@ -1125,17 +1128,17 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
                   const el = document.getElementById('input-source');
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="p-3 rounded-xl border border-violet-300 dark:border-violet-800/80 bg-white dark:bg-violet-950/20 hover:border-violet-500 text-left cursor-pointer transition-all flex flex-col justify-between group"
+                className="p-3 rounded-xl border border-violet-300 dark:border-violet-800/80 bg-white dark:bg-violet-950/20 hover:border-violet-500 text-left cursor-pointer transition-all flex flex-col justify-between group shadow-xs"
               >
                 <div>
                   <div className="flex items-center gap-1.5 text-violet-600 dark:text-violet-400 font-bold text-xs">
-                    <FileVideo className="h-3.5 w-3.5" />
-                    <span>{isId ? 'Solusi 2: Unggah File MP4' : 'Solution 2: Upload File'}</span>
+                    <FileVideo className="h-4 w-4" />
+                    <span>{isId ? 'Solusi 2: Unggah File MP4' : 'Solution 2: Upload Video File'}</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-normal">
                     {isId 
-                      ? 'Unggah video dari perangkat sendiri. Bebas limitasi bot YouTube sama sekali.' 
-                      : 'Upload your own MP4/WebM. 100% bypasses all YouTube restrictions.'}
+                      ? 'Unduh video sumber di perangkat Anda lalu unggah file MP4 ke DriaClip. 100% cepat tanpa blokir.' 
+                      : 'Upload the video file directly from your device. 100% bypasses all bot protections.'}
                   </p>
                 </div>
                 <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-violet-700 dark:text-violet-300 group-hover:underline">
@@ -1143,30 +1146,30 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
                 </span>
               </a>
 
-              {/* Option 3: Retry with Mobile Stream Engine */}
+              {/* Option 3: Built-in Sample Video (100% Guaranteed instant download) */}
               <button
                 type="button"
                 onClick={() => {
                   setDownloadError(null);
-                  if (clips.length > 0) {
-                    handleDownloadSingle(clips[0]);
+                  if (onSelectSampleVideo) {
+                    onSelectSampleVideo(SAMPLE_VIDEOS[1]); // Podcast sample
                   }
                 }}
-                className="p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:border-slate-400 text-left cursor-pointer transition-all flex flex-col justify-between group"
+                className="p-3 rounded-xl border border-emerald-300 dark:border-emerald-800/80 bg-white dark:bg-emerald-950/20 hover:border-emerald-500 text-left cursor-pointer transition-all flex flex-col justify-between group shadow-xs"
               >
                 <div>
-                  <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-bold text-xs">
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    <span>{isId ? 'Solusi 3: Coba Unduh Lagi' : 'Solution 3: Retry Download'}</span>
+                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                    <Sparkles className="h-4 w-4" />
+                    <span>{isId ? 'Solusi 3: Pakai Sampel HD' : 'Solution 3: Try HD Sample'}</span>
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-normal">
                     {isId 
-                      ? 'Coba unduh ulang menggunakan engine mobile web + format 18 progressive.' 
-                      : 'Retry with multi-client mobile stream bypass pipeline.'}
+                      ? 'Coba hasil potongan video dengan sampel lokal podcast. 100% langsung siap diunduh MP4.' 
+                      : 'Test the clipping engine using built-in podcast sample video. Instant MP4 download.'}
                   </p>
                 </div>
-                <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:underline">
-                  {isId ? 'Jalankan Unduh Ulang ↺' : 'Retry Single Clip ↺'}
+                <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 group-hover:underline">
+                  {isId ? 'Pilih Sampel Podcast →' : 'Select Sample Video →'}
                 </span>
               </button>
             </div>

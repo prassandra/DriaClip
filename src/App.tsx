@@ -14,6 +14,7 @@ import { VideoTimelineScrubber } from './components/VideoTimelineScrubber';
 import { ClipDashboard } from './components/ClipDashboard';
 import { ClipPreviewModal } from './components/ClipPreviewModal';
 import { ClipFineTuneModal } from './components/ClipFineTuneModal';
+import { YouTubeCookieModal } from './components/YouTubeCookieModal';
 import { LegalAndInfoPages, PageView } from './components/LegalAndInfoPages';
 import { SeoSections } from './components/SeoSections';
 import { WhyDriaClipSection } from './components/WhyDriaClipSection';
@@ -103,6 +104,20 @@ export default function App() {
   const [previewClip, setPreviewClip] = useState<GeneratedClip | null>(null);
   const [fineTuneClip, setFineTuneClip] = useState<GeneratedClip | null>(null);
   const [legalPageView, setLegalPageView] = useState<PageView>('none');
+  const [cookieModalOpen, setCookieModalOpen] = useState(false);
+  const [hasYouTubeCookies, setHasYouTubeCookies] = useState(false);
+
+  // Check YouTube cookie status on mount
+  useEffect(() => {
+    fetch('/api/youtube-cookies')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.active) {
+          setHasYouTubeCookies(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Sync font size with document root and body: 14px, 16px, 18px
   useEffect(() => {
@@ -519,6 +534,8 @@ export default function App() {
         theme={theme}
         onToggleTheme={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
         onOpenLegalPage={(page) => setLegalPageView(page)}
+        onOpenYouTubeCookiesModal={() => setCookieModalOpen(true)}
+        hasYouTubeCookies={hasYouTubeCookies}
       />
 
       {/* Main Workspace Viewport */}
@@ -608,6 +625,8 @@ export default function App() {
               }}
               isLoading={job.status !== 'idle' && job.status !== 'completed'}
               lang={lang}
+              hasYouTubeCookies={hasYouTubeCookies}
+              onOpenYouTubeCookiesModal={() => setCookieModalOpen(true)}
             />
 
             {/* Step 2: Interactive Video Player & Timeline Scrubber (Placed ABOVE configuration) */}
@@ -656,6 +675,7 @@ export default function App() {
               onUpdateClipCrop={handleUpdateClipCrop}
               onSelectSampleVideo={handleSelectSampleVideo}
               lang={lang}
+              onOpenYouTubeCookiesModal={() => setCookieModalOpen(true)}
             />
 
             {/* Why Choose DriaClip Key Advantages */}
@@ -677,6 +697,7 @@ export default function App() {
               onUpdateClipCrop={handleUpdateClipCrop}
               onSelectSampleVideo={handleSelectSampleVideo}
               lang={lang}
+              onOpenYouTubeCookiesModal={() => setCookieModalOpen(true)}
             />
           </div>
         )}
@@ -717,6 +738,14 @@ export default function App() {
           lang={lang}
         />
       )}
+
+      {/* YouTube Cookie Settings Modal */}
+      <YouTubeCookieModal
+        isOpen={cookieModalOpen}
+        onClose={() => setCookieModalOpen(false)}
+        lang={lang}
+        onCookieStatusChange={setHasYouTubeCookies}
+      />
 
       <LegalAndInfoPages
         currentPage={legalPageView}

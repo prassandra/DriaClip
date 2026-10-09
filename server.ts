@@ -86,6 +86,72 @@ app.post('/api/render-local-clip', (req, res) => {
   });
 });
 
+const COOKIES_PATH = path.resolve(process.cwd(), 'cookies.txt');
+
+/**
+ * Endpoint to check YouTube cookies status
+ */
+app.get('/api/youtube-cookies', (_req, res) => {
+  try {
+    if (fs.existsSync(COOKIES_PATH)) {
+      const stat = fs.statSync(COOKIES_PATH);
+      const content = fs.readFileSync(COOKIES_PATH, 'utf-8');
+      const lines = content.split('\n').filter(l => l.trim() && !l.startsWith('#')).length;
+      res.json({
+        active: true,
+        sizeBytes: stat.size,
+        updatedAt: stat.mtime.toISOString(),
+        cookieCount: lines,
+      });
+    } else {
+      res.json({ active: false, sizeBytes: 0, updatedAt: null, cookieCount: 0 });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: 'Gagal membaca status cookies' });
+  }
+});
+
+/**
+ * Endpoint to save YouTube cookies (Netscape format)
+ */
+app.post('/api/youtube-cookies', (req, res) => {
+  try {
+    const { cookies } = req.body;
+    if (!cookies || typeof cookies !== 'string' || !cookies.trim()) {
+      return res.status(400).json({ error: 'Format cookies tidak boleh kosong' });
+    }
+
+    const cleanCookies = cookies.trim() + '\n';
+    fs.writeFileSync(COOKIES_PATH, cleanCookies, 'utf-8');
+    const stat = fs.statSync(COOKIES_PATH);
+    const lines = cleanCookies.split('\n').filter(l => l.trim() && !l.startsWith('#')).length;
+
+    res.json({
+      success: true,
+      message: 'Cookie YouTube berhasil disimpan dan aktif!',
+      sizeBytes: stat.size,
+      updatedAt: stat.mtime.toISOString(),
+      cookieCount: lines,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Gagal menyimpan file cookies' });
+  }
+});
+
+/**
+ * Endpoint to delete YouTube cookies
+ */
+app.delete('/api/youtube-cookies', (_req, res) => {
+  try {
+    if (fs.existsSync(COOKIES_PATH)) {
+      fs.unlinkSync(COOKIES_PATH);
+    }
+    res.json({ success: true, message: 'Cookie YouTube berhasil dihapus' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Gagal menghapus cookies' });
+  }
+});
+
 const isProd = process.env.NODE_ENV === 'production';
 const distPath = path.resolve(process.cwd(), 'dist');
 

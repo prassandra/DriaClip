@@ -5,15 +5,16 @@ import {
   Layers, 
   Menu, 
   X, 
-  HelpCircle,
-  Sun,
-  Moon,
-  Globe,
-  Type,
-  ChevronDown,
-  Check,
-  ExternalLink,
-  Wrench
+  HelpCircle, 
+  Sun, 
+  Moon, 
+  Globe, 
+  Type, 
+  ChevronDown, 
+  Check, 
+  ExternalLink, 
+  Wrench,
+  Cookie
 } from 'lucide-react';
 import { DriaClipLogo } from './DriaClipLogo';
 import { Language, FontSize, ThemeMode, TRANSLATIONS } from '../i18n/translations';
@@ -30,6 +31,8 @@ interface HeaderProps {
   theme: ThemeMode;
   onToggleTheme: () => void;
   onOpenLegalPage: (page: PageView) => void;
+  onOpenYouTubeCookiesModal?: () => void;
+  hasYouTubeCookies?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -43,6 +46,8 @@ export const Header: React.FC<HeaderProps> = ({
   theme,
   onToggleTheme,
   onOpenLegalPage: _onOpenLegalPage,
+  onOpenYouTubeCookiesModal,
+  hasYouTubeCookies,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
@@ -220,6 +225,24 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Desktop Header Controls: Theme, Font Size & Language */}
         <div className="hidden sm:flex items-center gap-2">
+          {/* YouTube Cookies Button */}
+          {onOpenYouTubeCookiesModal && (
+            <button
+              type="button"
+              onClick={onOpenYouTubeCookiesModal}
+              title={isId ? 'Pengaturan Cookie YouTube (Bypass Bot Cloud)' : 'YouTube Cookie Authentication'}
+              className={`flex items-center gap-1.5 h-9 px-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition-all ${
+                hasYouTubeCookies
+                  ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:border-emerald-400'
+                  : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-violet-400'
+              }`}
+            >
+              <Cookie className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+              <span className="hidden md:inline">{isId ? 'Cookie YouTube' : 'YouTube Cookies'}</span>
+              <span className={`h-2 w-2 rounded-full shrink-0 ${hasYouTubeCookies ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+            </button>
+          )}
+
           {/* Theme Toggle Button */}
           <button
             type="button"
@@ -428,6 +451,35 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             </div>
           </div>
+
+          {/* YouTube Cookie Setting in Mobile */}
+          {onOpenYouTubeCookiesModal && (
+            <div className="pb-3 border-b border-slate-200 dark:border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenYouTubeCookiesModal();
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between p-2.5 rounded-lg border text-xs font-bold cursor-pointer transition-all ${
+                  hasYouTubeCookies
+                    ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Cookie className="h-4 w-4 text-amber-500" />
+                  <span>{isId ? 'Pengaturan Cookie YouTube' : 'YouTube Cookie Settings'}</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-[11px]">
+                  <span className={`h-2 w-2 rounded-full ${hasYouTubeCookies ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                  <span className="text-slate-500 dark:text-slate-400">
+                    {hasYouTubeCookies ? (isId ? 'Aktif' : 'Active') : (isId ? 'Belum Diatur' : 'Not Set')}
+                  </span>
+                </span>
+              </button>
+            </div>
+          )}
 
           {/* 3. Navigasi Halaman DriaClip */}
           <div className="space-y-1.5 pt-1 text-xs">

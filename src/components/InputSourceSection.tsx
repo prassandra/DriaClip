@@ -14,6 +14,7 @@ import {
 import { VideoSourceMetadata } from '../types/driaclip';
 import { formatTimeCode } from '../services/videoClipper';
 import { Language, TRANSLATIONS } from '../i18n/translations';
+import { Cookie } from 'lucide-react';
 
 interface InputSourceSectionProps {
   currentSource: VideoSourceMetadata | null;
@@ -21,6 +22,8 @@ interface InputSourceSectionProps {
   onReset?: () => void;
   isLoading?: boolean;
   lang: Language;
+  hasYouTubeCookies?: boolean;
+  onOpenYouTubeCookiesModal?: () => void;
 }
 
 // Probe YouTube duration automatically using YouTube IFrame API
@@ -89,6 +92,8 @@ export const InputSourceSection: React.FC<InputSourceSectionProps> = ({
   onReset,
   isLoading: _isLoading,
   lang,
+  hasYouTubeCookies,
+  onOpenYouTubeCookiesModal,
 }) => {
   const t = TRANSLATIONS[lang];
   const isId = lang === 'id';
@@ -520,6 +525,38 @@ export const InputSourceSection: React.FC<InputSourceSectionProps> = ({
                 <ShieldCheck className="h-3 w-3 text-emerald-500 shrink-0" />
                 <span>{isId ? 'Durasi Dibaca Otomatis Tanpa Konfirmasi' : 'Duration Read Automatically'}</span>
               </span>
+            </div>
+
+            {/* YouTube Cloud Download Helper / Cookie Status */}
+            <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs ${
+              hasYouTubeCookies
+                ? 'bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300'
+                : 'bg-violet-50/70 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800/60 text-violet-900 dark:text-violet-300'
+            }`}>
+              <div className="flex items-center gap-2 min-w-0">
+                <Cookie className={`h-4 w-4 shrink-0 ${hasYouTubeCookies ? 'text-emerald-600' : 'text-amber-500'}`} />
+                <span className="truncate">
+                  {hasYouTubeCookies ? (
+                    isId 
+                      ? 'Cookie YouTube aktif — link YouTube siap diunduh & dipotong langsung dari server.'
+                      : 'YouTube cookies active — links ready for direct server rendering & clipping.'
+                  ) : (
+                    isId 
+                      ? 'Tips: Pasang Cookie YouTube agar download dari server tidak dicekal verifikasi bot.'
+                      : 'Tip: Configure YouTube cookies to bypass cloud server bot verifications.'
+                  )}
+                </span>
+              </div>
+
+              {onOpenYouTubeCookiesModal && (
+                <button
+                  type="button"
+                  onClick={onOpenYouTubeCookiesModal}
+                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold shrink-0 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer shadow-xs transition-colors"
+                >
+                  {hasYouTubeCookies ? (isId ? 'Kelola Cookie' : 'Manage') : (isId ? 'Pasang Cookie' : 'Setup Cookies')}
+                </button>
+              )}
             </div>
           </div>
         )}
