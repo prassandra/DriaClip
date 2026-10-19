@@ -260,35 +260,313 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
         )}
       </div>
 
-      {/* Format Otomatis 9:16 Vertikal — Langsung Otomatis Tanpa Pilihan Rumit */}
-      <div className="rounded-2xl border border-violet-200/90 dark:border-violet-900/60 bg-gradient-to-r from-violet-50/80 via-indigo-50/50 to-slate-50/80 dark:from-violet-950/40 dark:via-indigo-950/30 dark:to-slate-900/40 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-3.5">
-          <div className="h-11 w-11 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-violet-600/30">
-            <Smartphone className="h-5 w-5" />
-          </div>
-          <div className="space-y-0.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
-                {isId ? 'Format Otomatis 9:16 Vertikal' : 'Automatic 9:16 Vertical Format'}
-              </span>
-              <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800">
-                TikTok • Reels • Shorts
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
-              {isId 
-                ? 'Video langsung otomatis dipotong 9:16 pas di tengah layar tanpa perlu mengatur pilihan rasio manual.' 
-                : 'Direct automatic 9:16 center-crop locked for short-form viral videos without manual tweaks.'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-          <span className="text-xs font-mono font-bold text-violet-700 dark:text-violet-300 bg-violet-100/80 dark:bg-violet-900/60 px-3 py-1.5 rounded-lg border border-violet-200 dark:border-violet-800 flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>9:16 Aktif</span>
+      {/* Module 2: Pilihan Rasio Aspek (9:16, 16:9, 1:1) */}
+      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-5 sm:p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+            <Smartphone className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <span>{isId ? 'Pilihan Rasio Aspek' : 'Aspect Ratio'}</span>
+          </label>
+          <span className="text-xs font-mono font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-950/60 px-2.5 py-0.5 rounded-full border border-violet-300/60 dark:border-violet-800">
+            {config.aspectRatio} {isId ? 'Aktif' : 'Active'}
           </span>
         </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* 9:16 */}
+          <button
+            type="button"
+            onClick={() => updateConfig('aspectRatio', '9:16')}
+            className={`p-4 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+              config.aspectRatio === '9:16'
+                ? 'border-violet-600 bg-violet-600 text-white font-bold shadow-md shadow-violet-600/25 ring-2 ring-violet-500/20'
+                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-violet-400 dark:hover:border-slate-700'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="h-4 w-4" />
+                  <span className="text-sm font-extrabold font-mono">9:16</span>
+                </div>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                  config.aspectRatio === '9:16'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300'
+                }`}>
+                  {isId ? 'Vertikal' : 'Vertical'}
+                </span>
+              </div>
+              <p className={`text-xs leading-snug ${config.aspectRatio === '9:16' ? 'text-violet-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                TikTok • Reels • Shorts
+              </p>
+            </div>
+
+            <div className="mt-3 pt-2 border-t border-white/10 dark:border-slate-800/80 flex items-center justify-center">
+              <div className="w-7 h-12 rounded border-2 border-current flex items-center justify-center bg-current/10">
+                <span className="text-[9px] font-mono font-bold">9:16</span>
+              </div>
+            </div>
+          </button>
+
+          {/* 16:9 */}
+          <button
+            type="button"
+            onClick={() => updateConfig('aspectRatio', '16:9')}
+            className={`p-4 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+              config.aspectRatio === '16:9'
+                ? 'border-violet-600 bg-violet-600 text-white font-bold shadow-md shadow-violet-600/25 ring-2 ring-violet-500/20'
+                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-violet-400 dark:hover:border-slate-700'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <Monitor className="h-4 w-4" />
+                  <span className="text-sm font-extrabold font-mono">16:9</span>
+                </div>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                  config.aspectRatio === '16:9'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}>
+                  {isId ? 'Lanskap' : 'Landscape'}
+                </span>
+              </div>
+              <p className={`text-xs leading-snug ${config.aspectRatio === '16:9' ? 'text-violet-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                YouTube • Widescreen • TV
+              </p>
+            </div>
+
+            <div className="mt-3 pt-2 border-t border-white/10 dark:border-slate-800/80 flex items-center justify-center">
+              <div className="w-12 h-7 rounded border-2 border-current flex items-center justify-center bg-current/10">
+                <span className="text-[9px] font-mono font-bold">16:9</span>
+              </div>
+            </div>
+          </button>
+
+          {/* 1:1 */}
+          <button
+            type="button"
+            onClick={() => updateConfig('aspectRatio', '1:1')}
+            className={`p-4 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+              config.aspectRatio === '1:1'
+                ? 'border-violet-600 bg-violet-600 text-white font-bold shadow-md shadow-violet-600/25 ring-2 ring-violet-500/20'
+                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-violet-400 dark:hover:border-slate-700'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <Square className="h-4 w-4" />
+                  <span className="text-sm font-extrabold font-mono">1:1</span>
+                </div>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                  config.aspectRatio === '1:1'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}>
+                  {isId ? 'Persegi' : 'Square'}
+                </span>
+              </div>
+              <p className={`text-xs leading-snug ${config.aspectRatio === '1:1' ? 'text-violet-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                Instagram Feed • Carousel • Post
+              </p>
+            </div>
+
+            <div className="mt-3 pt-2 border-t border-white/10 dark:border-slate-800/80 flex items-center justify-center">
+              <div className="w-9 h-9 rounded border-2 border-current flex items-center justify-center bg-current/10">
+                <span className="text-[9px] font-mono font-bold">1:1</span>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Module 3: Perlakuan Tampilan Frame (Full / Penuh, Bilah Hitam, Blur) */}
+      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-5 sm:p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+            <Sliders className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <span>{isId ? 'Pilihan Tampilan (Full, Bilah Hitam, Blur)' : 'Framing Style (Full, Letterbox, Blur)'}</span>
+          </label>
+          <span className="text-xs font-mono font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-950/60 px-2.5 py-0.5 rounded-full border border-violet-300/60 dark:border-violet-800">
+            {config.verticalStyle === 'center-crop'
+              ? (isId ? 'Penuh (Full)' : 'Full (Center Crop)')
+              : config.verticalStyle === 'letterbox'
+              ? (isId ? 'Bilah Hitam' : 'Black Bars')
+              : (isId ? 'Latar Blur' : 'Blur Background')}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Pilihan 1: Full / Penuh (center-crop) */}
+          <button
+            type="button"
+            onClick={() => updateConfig('verticalStyle', 'center-crop')}
+            className={`p-4 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+              config.verticalStyle === 'center-crop'
+                ? 'border-violet-600 bg-violet-600 text-white font-bold shadow-md shadow-violet-600/25 ring-2 ring-violet-500/20'
+                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-violet-400 dark:hover:border-slate-700'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-sm font-extrabold block">
+                  {isId ? 'Penuh (Full)' : 'Full (Center Crop)'}
+                </span>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                  config.verticalStyle === 'center-crop'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300'
+                }`}>
+                  {isId ? 'Populer' : 'Popular'}
+                </span>
+              </div>
+              <p className={`text-xs leading-snug ${config.verticalStyle === 'center-crop' ? 'text-violet-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                {isId 
+                  ? 'Video dipotong pas di tengah memenuhi seluruh frame tanpa ada area kosong.' 
+                  : 'Crops video focus to center, filling the entire frame screen completely.'}
+              </p>
+            </div>
+
+            {/* Visual Icon Illustration */}
+            <div className="mt-3 pt-2.5 border-t border-white/10 dark:border-slate-800 flex items-center justify-center">
+              <div className="w-12 h-14 rounded border-2 border-dashed border-current flex items-center justify-center bg-current/10">
+                <span className="text-[10px] font-mono font-bold">FULL</span>
+              </div>
+            </div>
+          </button>
+
+          {/* Pilihan 2: Bilah Hitam (letterbox) */}
+          <button
+            type="button"
+            onClick={() => updateConfig('verticalStyle', 'letterbox')}
+            className={`p-4 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+              config.verticalStyle === 'letterbox'
+                ? 'border-violet-600 bg-violet-600 text-white font-bold shadow-md shadow-violet-600/25 ring-2 ring-violet-500/20'
+                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-violet-400 dark:hover:border-slate-700'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-sm font-extrabold block">
+                  {isId ? 'Bilah Hitam' : 'Black Bars (Letterbox)'}
+                </span>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                  config.verticalStyle === 'letterbox'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}>
+                  Sinematik
+                </span>
+              </div>
+              <p className={`text-xs leading-snug ${config.verticalStyle === 'letterbox' ? 'text-violet-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                {isId 
+                  ? 'Video utuh proporsional di tengah dengan bilah hitam sinematik di tepi atas dan bawah.' 
+                  : 'Full original video centered with clean cinematic black bars top and bottom.'}
+              </p>
+            </div>
+
+            {/* Visual Icon Illustration */}
+            <div className="mt-3 pt-2.5 border-t border-white/10 dark:border-slate-800 flex items-center justify-center">
+              <div className="w-12 h-14 rounded border border-current bg-black flex flex-col justify-between p-0.5">
+                <div className="w-full h-2 bg-black" />
+                <div className="w-full h-5 rounded-xs bg-current/30 flex items-center justify-center text-[8px] font-mono font-bold">16:9</div>
+                <div className="w-full h-2 bg-black" />
+              </div>
+            </div>
+          </button>
+
+          {/* Pilihan 3: Blur (blur-background) */}
+          <button
+            type="button"
+            onClick={() => updateConfig('verticalStyle', 'blur-background')}
+            className={`p-4 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+              config.verticalStyle === 'blur-background'
+                ? 'border-violet-600 bg-violet-600 text-white font-bold shadow-md shadow-violet-600/25 ring-2 ring-violet-500/20'
+                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-violet-400 dark:hover:border-slate-700'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-sm font-extrabold block">
+                  {isId ? 'Latar Blur' : 'Blur Background'}
+                </span>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                  config.verticalStyle === 'blur-background'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300'
+                }`}>
+                  Estetik
+                </span>
+              </div>
+              <p className={`text-xs leading-snug ${config.verticalStyle === 'blur-background' ? 'text-violet-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                {isId 
+                  ? 'Video tajam di tengah dengan latar belakang video buram (blur) bergerak yang estetik.' 
+                  : 'Sharp centered footage overlaid onto an aesthetically blurred moving video backdrop.'}
+              </p>
+            </div>
+
+            {/* Visual Icon Illustration */}
+            <div className="mt-3 pt-2.5 border-t border-white/10 dark:border-slate-800 flex items-center justify-center">
+              <div className="w-12 h-14 rounded border border-current bg-current/15 backdrop-blur-sm flex items-center justify-center p-0.5">
+                <div className="w-full h-5 rounded-xs bg-current/40 border border-current/30 flex items-center justify-center text-[8px] font-mono font-bold">BLUR</div>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        {/* If 'center-crop' is selected and aspect ratio is 9:16 or 1:1, show quick center/left/right horizontal crop guidance */}
+        {config.verticalStyle === 'center-crop' && (config.aspectRatio === '9:16' || config.aspectRatio === '1:1') && (
+          <div className="rounded-xl border border-violet-200 dark:border-violet-900/60 bg-white dark:bg-slate-900/70 p-3.5 space-y-2.5 animate-in fade-in duration-150">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                <MoveHorizontal className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                <span>{isId ? 'Posisi Potongan Frame (Horizontal Pan)' : 'Horizontal Frame Position'}</span>
+              </div>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
+                {config.cropPositionX ?? 50}% {config.cropPositionX === 50 ? (isId ? '(Tengah Presisi)' : '(Exact Center)') : config.cropPositionX! < 50 ? (isId ? '(Cenderung Kiri)' : '(Towards Left)') : (isId ? '(Cenderung Kanan)' : '(Towards Right)')}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => updateConfig('cropPositionX', 15)}
+                className={`py-2 px-3 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                  config.cropPositionX === 15
+                    ? 'border-violet-600 bg-violet-600 text-white font-bold shadow-sm'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:border-violet-300'
+                }`}
+              >
+                &larr; {isId ? 'Kiri (15%)' : 'Left (15%)'}
+              </button>
+              <button
+                type="button"
+                onClick={() => updateConfig('cropPositionX', 50)}
+                className={`py-2 px-3 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                  (config.cropPositionX ?? 50) === 50
+                    ? 'border-violet-600 bg-violet-600 text-white font-bold shadow-sm'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:border-violet-300'
+                }`}
+              >
+                {isId ? 'Tengah (50%)' : 'Center (50%)'}
+              </button>
+              <button
+                type="button"
+                onClick={() => updateConfig('cropPositionX', 85)}
+                className={`py-2 px-3 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                  config.cropPositionX === 85
+                    ? 'border-violet-600 bg-violet-600 text-white font-bold shadow-sm'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:border-violet-300'
+                }`}
+              >
+                {isId ? 'Kanan (85%)' : 'Right (85%)'} &rarr;
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Module 3: Pilihan Resolusi Ekspor — Clean, Direct, and Minimalist (1080p, 720p, 480p, 360p) */}
@@ -580,7 +858,7 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-slate-200/80 dark:border-slate-800/80">
         <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-mono">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span>DriaClip Engine &middot; {config.aspectRatio} &middot; {config.exportQuality} &middot; {currentDurationSec}s {isId ? 'per Klip' : 'per Clip'}</span>
+          <span>DriaClip Engine &middot; {config.aspectRatio} &middot; {config.verticalStyle === 'center-crop' ? (isId ? 'Penuh (Full)' : 'Full') : config.verticalStyle === 'letterbox' ? (isId ? 'Bilah Hitam' : 'Letterbox') : (isId ? 'Latar Blur' : 'Blur')} &middot; {config.exportQuality} &middot; {currentDurationSec}s {isId ? 'per Klip' : 'per Clip'}</span>
         </div>
 
         <button

@@ -1330,7 +1330,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
 
               {/* Google AdSense In-Feed Slot After Card for clip.driacom.com */}
               <AdSenseSlot
-                slotId={`38492019${idx + 1}`}
+                slotId="5462390377"
                 label={isId ? `Iklan Google AdSense • Slot #${idx + 1}` : `Google AdSense • Slot #${idx + 1}`}
                 className="h-full min-h-[340px]"
               />

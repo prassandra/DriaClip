@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Check, Clock, Edit3, Sparkles, MoveHorizontal, ShieldCheck, Palette, Type } from 'lucide-react';
-import { GeneratedClip, VideoSourceMetadata, WatermarkStyle, WatermarkPosition } from '../types/driaclip';
+import { X, Check, Clock, Edit3, Sparkles, MoveHorizontal, ShieldCheck, Palette, Type, Smartphone, Monitor, Square, Sliders } from 'lucide-react';
+import { GeneratedClip, VideoSourceMetadata, WatermarkStyle, WatermarkPosition, AspectRatio, VerticalStyle } from '../types/driaclip';
 import { formatTimeCode } from '../services/videoClipper';
 import { Language } from '../i18n/translations';
 import { WatermarkBadge } from './WatermarkBadge';
@@ -29,6 +29,8 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
   const [hookText, setHookText] = useState(clip.hookText);
   const [startTime, setStartTime] = useState(clip.startTime);
   const [endTime, setEndTime] = useState(clip.endTime);
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(clip.aspectRatio || '9:16');
+  const [verticalStyle, setVerticalStyle] = useState<VerticalStyle>(clip.verticalStyle || 'center-crop');
   const [watermark, setWatermark] = useState(clip.watermark !== false);
   const [watermarkText, setWatermarkText] = useState(clip.watermarkText || 'DriaClip');
   const [watermarkStyle, setWatermarkStyle] = useState<WatermarkStyle>(clip.watermarkStyle || 'neon-glow');
@@ -66,6 +68,8 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
       startTime: Math.round(startTime),
       endTime: Math.round(endTime),
       duration: Math.round(endTime - startTime),
+      aspectRatio,
+      verticalStyle,
       cropPositionX,
       watermark,
       watermarkText: watermarkText.trim() || 'DriaClip',
@@ -76,8 +80,8 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-2xl border border-neutral-800 bg-neutral-950 p-6 shadow-2xl space-y-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 overflow-y-auto">
+      <div className="relative w-full max-w-lg rounded-2xl border border-neutral-800 bg-neutral-950 p-6 shadow-2xl space-y-5 my-8">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
           <div className="flex items-center gap-2">
@@ -195,8 +199,73 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
             <span className="font-semibold text-neutral-200">{duration} {isId ? 'detik' : 'seconds'}</span>
           </div>
 
-          {/* Interactive Frame Positioning & Shift Controls */}
-          {clip.aspectRatio === '9:16' && (
+          {/* Aspect Ratio Selector */}
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
+                <Smartphone className="h-3.5 w-3.5 text-violet-400" />
+                <span>{isId ? 'Rasio Aspek Klip' : 'Clip Aspect Ratio'}</span>
+              </label>
+              <span className="text-[10px] font-mono font-bold text-violet-300 bg-violet-950/60 px-2 py-0.5 rounded border border-violet-800">
+                {aspectRatio}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: '9:16', label: '9:16', desc: 'Vertikal' },
+                { id: '16:9', label: '16:9', desc: 'Lanskap' },
+                { id: '1:1', label: '1:1', desc: 'Persegi' },
+              ].map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setAspectRatio(r.id as AspectRatio)}
+                  className={`py-2 px-2.5 rounded-lg border text-center transition-all cursor-pointer ${
+                    aspectRatio === r.id
+                      ? 'border-violet-500 bg-violet-600/30 text-white font-bold'
+                      : 'border-neutral-800 bg-neutral-900 text-neutral-300 hover:border-neutral-700'
+                  }`}
+                >
+                  <span className="text-xs font-mono font-bold block">{r.label}</span>
+                  <span className="text-[9px] text-neutral-400 block">{r.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Framing Treatment (Full / Bilah Hitam / Blur) */}
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
+                <Sliders className="h-3.5 w-3.5 text-violet-400" />
+                <span>{isId ? 'Pilihan Tampilan (Full, Bilah Hitam, Blur)' : 'Framing Style (Full, Letterbox, Blur)'}</span>
+              </label>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'center-crop', label: isId ? 'Penuh' : 'Full', desc: 'Center Crop' },
+                { id: 'letterbox', label: isId ? 'Bilah Hitam' : 'Letterbox', desc: 'Black Bars' },
+                { id: 'blur-background', label: isId ? 'Latar Blur' : 'Blur', desc: 'Aesthetic' },
+              ].map((style) => (
+                <button
+                  key={style.id}
+                  type="button"
+                  onClick={() => setVerticalStyle(style.id as VerticalStyle)}
+                  className={`py-2 px-2 rounded-lg border text-center transition-all cursor-pointer ${
+                    verticalStyle === style.id
+                      ? 'border-violet-500 bg-violet-600/30 text-white font-bold'
+                      : 'border-neutral-800 bg-neutral-900 text-neutral-300 hover:border-neutral-700'
+                  }`}
+                >
+                  <span className="text-xs font-bold block">{style.label}</span>
+                  <span className="text-[9px] text-neutral-400 block">{style.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Interactive Frame Positioning & Shift Controls (for center-crop) */}
+          {verticalStyle === 'center-crop' && (aspectRatio === '9:16' || aspectRatio === '1:1') && (
             <div className="rounded-xl border border-violet-500/40 bg-violet-950/30 p-3.5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-violet-300 font-bold text-xs">

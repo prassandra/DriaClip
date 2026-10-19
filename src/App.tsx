@@ -19,6 +19,7 @@ import { SeoSections } from './components/SeoSections';
 import { WhyDriaClipSection } from './components/WhyDriaClipSection';
 import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { Footer } from './components/Footer';
+import { AdSenseSlot } from './components/AdSenseSlot';
 
 import { 
   VideoSourceMetadata, 
@@ -604,6 +605,12 @@ export default function App() {
               }}
             />
 
+            {/* Google AdSense Slot — Sela-sela Padding Menu 1 */}
+            <AdSenseSlot
+              slotId="5462390377"
+              label={isId ? 'Iklan oleh Google • Slot #1' : 'Google AdSense • Slot #1'}
+            />
+
             {/* Step 1: Input Ingestion (File Upload from Storage) */}
             <InputSourceSection
               currentSource={currentSource}
@@ -641,6 +648,12 @@ export default function App() {
               lang={lang}
             />
 
+            {/* Google AdSense Slot — Sela-sela Padding Menu 2 */}
+            <AdSenseSlot
+              slotId="5462390377"
+              label={isId ? 'Iklan oleh Google • Slot #2' : 'Google AdSense • Slot #2'}
+            />
+
             {/* Step 2: Interactive Video Player & Timeline Scrubber (Placed ABOVE configuration) */}
             <VideoTimelineScrubber
               source={currentSource}
@@ -666,6 +679,12 @@ export default function App() {
               }}
             />
 
+            {/* Google AdSense Slot — Sela-sela Padding Menu 3 */}
+            <AdSenseSlot
+              slotId="5462390377"
+              label={isId ? 'Iklan oleh Google • Slot #3' : 'Google AdSense • Slot #3'}
+            />
+
             {/* Step 3: Engine Configuration & Clip Trigger Button */}
             <ClippingControls
               config={config}
@@ -676,6 +695,12 @@ export default function App() {
               lang={lang}
               videoDuration={currentSource?.duration}
               source={currentSource}
+            />
+
+            {/* Google AdSense Slot — Sela-sela Padding Menu 4 */}
+            <AdSenseSlot
+              slotId="5462390377"
+              label={isId ? 'Iklan oleh Google • Slot #4' : 'Google AdSense • Slot #4'}
             />
 
             {/* Step 4: Clip Management Dashboard */}
@@ -690,8 +715,20 @@ export default function App() {
               onAttachVideoFile={handleAttachVideoFile}
             />
 
+            {/* Google AdSense Slot — Sela-sela Padding Menu 5 */}
+            <AdSenseSlot
+              slotId="5462390377"
+              label={isId ? 'Iklan oleh Google • Slot #5' : 'Google AdSense • Slot #5'}
+            />
+
             {/* Why Choose DriaClip Key Advantages */}
             <WhyDriaClipSection lang={lang} />
+
+            {/* Google AdSense Slot — Sela-sela Padding Menu 6 */}
+            <AdSenseSlot
+              slotId="5462390377"
+              label={isId ? 'Iklan oleh Google • Slot #6' : 'Google AdSense • Slot #6'}
+            />
 
             {/* Step 5: High-Value SEO Informational & FAQ Sections */}
             <SeoSections lang={lang} />
@@ -701,6 +738,10 @@ export default function App() {
         {/* Tab 2: Standalone Clips Queue */}
         {activeNavTab === 'clips' && (
           <div className="space-y-6">
+            <AdSenseSlot
+              slotId="5462390377"
+              label={isId ? 'Iklan oleh Google' : 'Google AdSense'}
+            />
             <ClipDashboard
               clips={generatedClips}
               source={currentSource}
@@ -711,20 +752,40 @@ export default function App() {
               lang={lang}
               onAttachVideoFile={handleAttachVideoFile}
             />
+            <AdSenseSlot
+              slotId="5462390377"
+              label={isId ? 'Iklan oleh Google' : 'Google AdSense'}
+            />
           </div>
         )}
 
         {/* Tab 3: Step-by-Step Guide View */}
         {activeNavTab === 'guide' && (
           <div className="space-y-6">
+            <AdSenseSlot
+              slotId="5462390377"
+              label={isId ? 'Iklan oleh Google' : 'Google AdSense'}
+            />
             <SeoSections lang={lang} />
+            <AdSenseSlot
+              slotId="5462390377"
+              label={isId ? 'Iklan oleh Google' : 'Google AdSense'}
+            />
           </div>
         )}
 
         {/* Tab 4: FAQ View */}
         {activeNavTab === 'faq' && (
           <div className="space-y-6">
+            <AdSenseSlot
+              slotId="5462390377"
+              label={isId ? 'Iklan oleh Google' : 'Google AdSense'}
+            />
             <SeoSections lang={lang} />
+            <AdSenseSlot
+              slotId="5462390377"
+              label={isId ? 'Iklan oleh Google' : 'Google AdSense'}
+            />
           </div>
         )}
       </main>
