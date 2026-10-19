@@ -14,7 +14,6 @@ import { VideoTimelineScrubber } from './components/VideoTimelineScrubber';
 import { ClipDashboard } from './components/ClipDashboard';
 import { ClipPreviewModal } from './components/ClipPreviewModal';
 import { ClipFineTuneModal } from './components/ClipFineTuneModal';
-import { YouTubeCookieModal } from './components/YouTubeCookieModal';
 import { LegalAndInfoPages, PageView } from './components/LegalAndInfoPages';
 import { SeoSections } from './components/SeoSections';
 import { WhyDriaClipSection } from './components/WhyDriaClipSection';
@@ -81,7 +80,9 @@ export default function App() {
     detectSceneChanges: true,
     minSpeechEnergy: 75,
     watermark: true, // Watermark DriaClip in anti-crop safe zone
+    watermarkText: 'DriaClip',
     watermarkPosition: 'safe-top-left',
+    watermarkStyle: 'neon-glow',
   });
 
   // Custom Markers for Manual Split
@@ -104,20 +105,6 @@ export default function App() {
   const [previewClip, setPreviewClip] = useState<GeneratedClip | null>(null);
   const [fineTuneClip, setFineTuneClip] = useState<GeneratedClip | null>(null);
   const [legalPageView, setLegalPageView] = useState<PageView>('none');
-  const [cookieModalOpen, setCookieModalOpen] = useState(false);
-  const [hasYouTubeCookies, setHasYouTubeCookies] = useState(false);
-
-  // Check YouTube cookie status on mount
-  useEffect(() => {
-    fetch('/api/youtube-cookies')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && data.active) {
-          setHasYouTubeCookies(true);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   // Sync font size with document root and body: 14px, 16px, 18px
   useEffect(() => {
@@ -262,7 +249,9 @@ export default function App() {
           autoTrackEnabled: false,
           exportQuality: config.exportQuality,
           watermark: config.watermark !== false,
+          watermarkText: config.watermarkText || 'DriaClip',
           watermarkPosition: config.watermarkPosition || 'safe-top-left',
+          watermarkStyle: config.watermarkStyle || 'neon-glow',
           status: 'ready',
           thumbnailBlobUrl: thumbnail,
           score: seg.score,
@@ -340,7 +329,9 @@ export default function App() {
           cropPositionX: config.cropPositionX ?? 50,
           exportQuality: config.exportQuality,
           watermark: config.watermark !== false,
+          watermarkText: config.watermarkText || 'DriaClip',
           watermarkPosition: config.watermarkPosition || 'safe-top-left',
+          watermarkStyle: config.watermarkStyle || 'neon-glow',
           status: 'ready',
           thumbnailBlobUrl: fallbackThumb,
           score: 92 + (partIdx % 6),
@@ -369,31 +360,38 @@ export default function App() {
     }
   };
 
-  const handleFineTuneSave = async (updated: GeneratedClip) => {
-    // If cropPositionX or timestamps changed, update thumbnail
-    if (currentSource?.url) {
-      try {
-        const thumbSec = calculateClipThumbnailTime(updated.startTime, updated.endTime);
-        const newThumb = await captureVideoThumbnail(
-          currentSource.url,
-          thumbSec,
-          updated.aspectRatio,
-          updated.verticalStyle,
-          currentSource.youtubeId,
-          0,
-          updated.startTime,
-          updated.endTime,
-          updated.title,
-          updated.cropPositionX ?? 50
-        );
-        if (newThumb) {
-          updated.thumbnailBlobUrl = newThumb;
-        }
-      } catch {}
-    }
-    setGeneratedClips((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+  const handleFineTuneSave = (updated: GeneratedClip) => {
+    setGeneratedClips((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)));
     if (previewClip && previewClip.id === updated.id) {
-      setPreviewClip(updated);
+      setPreviewClip((prev) => (prev ? { ...prev, ...updated } : null));
+    }
+  };
+
+  // Live config adjustments that reactively update existing clips in real-time
+  const handleConfigChange = (newConfig: ClipConfig) => {
+    setConfig(newConfig);
+    setGeneratedClips((prevClips) =>
+      prevClips.map((c) => ({
+        ...c,
+        watermark: newConfig.watermark !== false,
+        watermarkText: newConfig.watermarkText || 'DriaClip',
+        watermarkStyle: newConfig.watermarkStyle || 'neon-glow',
+        watermarkPosition: newConfig.watermarkPosition || 'safe-top-left',
+        exportQuality: newConfig.exportQuality || c.exportQuality,
+      }))
+    );
+    if (previewClip) {
+      setPreviewClip((prev) =>
+        prev
+          ? {
+              ...prev,
+              watermark: newConfig.watermark !== false,
+              watermarkText: newConfig.watermarkText || 'DriaClip',
+              watermarkStyle: newConfig.watermarkStyle || 'neon-glow',
+              watermarkPosition: newConfig.watermarkPosition || 'safe-top-left',
+            }
+          : null
+      );
     }
   };
 
@@ -479,7 +477,9 @@ export default function App() {
           clip.trackingKeyframes,
           clip.zoomOutPercent ?? 20,
           clip.watermark !== false,
-          clip.watermarkPosition || 'safe-top-left'
+          clip.watermarkPosition || 'safe-top-left',
+          clip.watermarkText || 'DriaClip',
+          clip.watermarkStyle || 'neon-glow'
         );
         clip.videoBlobUrl = res.url;
         clip.videoExtension = res.extension;
@@ -507,6 +507,8 @@ export default function App() {
         cropPositionX: 50,
         tags: h.tags,
         watermark: config.watermark,
+        watermarkText: config.watermarkText || 'DriaClip',
+        watermarkStyle: config.watermarkStyle || 'neon-glow',
         watermarkPosition: config.watermarkPosition,
         exportQuality: config.exportQuality,
       }));
@@ -548,8 +550,6 @@ export default function App() {
         theme={theme}
         onToggleTheme={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
         onOpenLegalPage={(page) => setLegalPageView(page)}
-        onOpenYouTubeCookiesModal={() => setCookieModalOpen(true)}
-        hasYouTubeCookies={hasYouTubeCookies}
       />
 
       {/* Main Workspace Viewport */}
@@ -604,7 +604,7 @@ export default function App() {
               }}
             />
 
-            {/* Step 1: Input Ingestion (File Upload or Link / YouTube Extraction) */}
+            {/* Step 1: Input Ingestion (File Upload from Storage) */}
             <InputSourceSection
               currentSource={currentSource}
               onReset={() => {
@@ -639,8 +639,6 @@ export default function App() {
               }}
               isLoading={job.status !== 'idle' && job.status !== 'completed'}
               lang={lang}
-              hasYouTubeCookies={hasYouTubeCookies}
-              onOpenYouTubeCookiesModal={() => setCookieModalOpen(true)}
             />
 
             {/* Step 2: Interactive Video Player & Timeline Scrubber (Placed ABOVE configuration) */}
@@ -671,7 +669,7 @@ export default function App() {
             {/* Step 3: Engine Configuration & Clip Trigger Button */}
             <ClippingControls
               config={config}
-              onChangeConfig={setConfig}
+              onChangeConfig={handleConfigChange}
               onRunEngine={handleRunEngine}
               isProcessing={job.status !== 'idle' && job.status !== 'completed'}
               canProcess={!!currentSource}
@@ -689,7 +687,6 @@ export default function App() {
               onUpdateClipCrop={handleUpdateClipCrop}
               onSelectSampleVideo={handleSelectSampleVideo}
               lang={lang}
-              onOpenYouTubeCookiesModal={() => setCookieModalOpen(true)}
               onAttachVideoFile={handleAttachVideoFile}
             />
 
@@ -712,7 +709,6 @@ export default function App() {
               onUpdateClipCrop={handleUpdateClipCrop}
               onSelectSampleVideo={handleSelectSampleVideo}
               lang={lang}
-              onOpenYouTubeCookiesModal={() => setCookieModalOpen(true)}
               onAttachVideoFile={handleAttachVideoFile}
             />
           </div>
@@ -740,6 +736,8 @@ export default function App() {
           source={currentSource}
           onClose={() => setPreviewClip(null)}
           onDownload={handleDownloadClip}
+          onUpdateClip={handleFineTuneSave}
+          onUpdateCrop={(cropX) => handleUpdateClipCrop(previewClip.id, cropX)}
           lang={lang}
         />
       )}
@@ -754,14 +752,6 @@ export default function App() {
           lang={lang}
         />
       )}
-
-      {/* YouTube Cookie Settings Modal */}
-      <YouTubeCookieModal
-        isOpen={cookieModalOpen}
-        onClose={() => setCookieModalOpen(false)}
-        lang={lang}
-        onCookieStatusChange={setHasYouTubeCookies}
-      />
 
       <LegalAndInfoPages
         currentPage={legalPageView}

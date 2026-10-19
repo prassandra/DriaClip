@@ -35,6 +35,9 @@ export interface SplitMarker {
   label?: string;
 }
 
+export type WatermarkPosition = 'safe-top-left' | 'safe-top-right' | 'center-top' | 'safe-bottom-left' | 'safe-bottom-right';
+export type WatermarkStyle = 'neon-glow' | 'glass-blur' | 'minimal-dark' | 'gradient-accent';
+
 export interface ClipConfig {
   durationMode: 'preset' | 'custom' | 'range';
   presetDuration: number; // 15, 30, 60, 90, etc.
@@ -52,7 +55,9 @@ export interface ClipConfig {
   cropPositionX?: number; // 0 to 100 (0 = Left, 50 = Center, 100 = Right)
   autoTrackSpeaker?: boolean; // automatically follow active speaker
   watermark?: boolean; // Secure DriaClip watermark on output clips (default: true)
-  watermarkPosition?: 'safe-top-left' | 'safe-top-right' | 'center-top'; // Strategic anti-crop placement
+  watermarkText?: string; // Custom watermark label inputted by user (default: 'DriaClip')
+  watermarkPosition?: WatermarkPosition; // Strategic anti-crop placement
+  watermarkStyle?: WatermarkStyle; // Visual badge theme style
 }
 
 export interface GeneratedClip {
@@ -70,7 +75,9 @@ export interface GeneratedClip {
   trackingKeyframes?: TrackingKeyframe[]; // Dynamic camera path following the speaker
   autoTrackEnabled?: boolean;
   watermark?: boolean;
-  watermarkPosition?: 'safe-top-left' | 'safe-top-right' | 'center-top';
+  watermarkText?: string;
+  watermarkPosition?: WatermarkPosition;
+  watermarkStyle?: WatermarkStyle;
   exportQuality: ExportQuality;
   status: 'ready' | 'processing' | 'failed';
   videoBlobUrl?: string;

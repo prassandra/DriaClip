@@ -9,13 +9,17 @@ import {
   ArrowRight,
   Sliders,
   MoveHorizontal,
-  Info,
   ShieldCheck,
-  Check
+  Check,
+  Type,
+  Palette,
+  Eye,
+  Info
 } from 'lucide-react';
-import { ClipConfig, AspectRatio, VerticalStyle, ExportQuality, VideoSourceMetadata } from '../types/driaclip';
+import { ClipConfig, AspectRatio, VerticalStyle, ExportQuality, VideoSourceMetadata, WatermarkStyle, WatermarkPosition } from '../types/driaclip';
 import { Language, TRANSLATIONS } from '../i18n/translations';
 import { formatTimeCode } from '../services/videoClipper';
+import { WatermarkBadge } from './WatermarkBadge';
 
 interface ClippingControlsProps {
   config: ClipConfig;
@@ -256,217 +260,35 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
         )}
       </div>
 
-      {/* Module 2: Adaptasi Rasio Aspek & Tampilan Vertikal (Dedicated Full Width Row - Lebih Lega) */}
-      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-5 sm:p-6 space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-800/60 pb-3">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-            <Smartphone className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-            <span>{t.controls.aspectRatio}</span>
-          </label>
-          <span className="text-xs font-mono font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-950/70 px-2.5 py-0.5 rounded-md border border-violet-200 dark:border-violet-800">
-            {config.aspectRatio === '9:16' ? '9:16 Vertikal' : config.aspectRatio === '16:9' ? '16:9 Horizontal' : '1:1 Persegi'}
+      {/* Format Otomatis 9:16 Vertikal — Langsung Otomatis Tanpa Pilihan Rumit */}
+      <div className="rounded-2xl border border-violet-200/90 dark:border-violet-900/60 bg-gradient-to-r from-violet-50/80 via-indigo-50/50 to-slate-50/80 dark:from-violet-950/40 dark:via-indigo-950/30 dark:to-slate-900/40 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3.5">
+          <div className="h-11 w-11 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-violet-600/30">
+            <Smartphone className="h-5 w-5" />
+          </div>
+          <div className="space-y-0.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
+                {isId ? 'Format Otomatis 9:16 Vertikal' : 'Automatic 9:16 Vertical Format'}
+              </span>
+              <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800">
+                TikTok • Reels • Shorts
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
+              {isId 
+                ? 'Video langsung otomatis dipotong 9:16 pas di tengah layar tanpa perlu mengatur pilihan rasio manual.' 
+                : 'Direct automatic 9:16 center-crop locked for short-form viral videos without manual tweaks.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+          <span className="text-xs font-mono font-bold text-violet-700 dark:text-violet-300 bg-violet-100/80 dark:bg-violet-900/60 px-3 py-1.5 rounded-lg border border-violet-200 dark:border-violet-800 flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>9:16 Aktif</span>
           </span>
         </div>
-
-        {/* Aspect Ratio Selector - Full Width 3 Columns with generous space */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-          {[
-            { id: '9:16' as AspectRatio, label: '9:16', sub: 'TikTok / Reels / YouTube Shorts', badge: isId ? 'Paling Populer' : 'Most Popular', icon: Smartphone },
-            { id: '16:9' as AspectRatio, label: '16:9', sub: 'YouTube Standar / Monitor Layar Penuh', badge: isId ? 'Lanskap' : 'Landscape', icon: Monitor },
-            { id: '1:1' as AspectRatio, label: '1:1', sub: 'Instagram Feed / Carousel / Kotak', badge: isId ? 'Persegi' : 'Square', icon: Square },
-          ].map((ratio) => {
-            const Icon = ratio.icon;
-            const isSelected = config.aspectRatio === ratio.id;
-            return (
-              <button
-                key={ratio.id}
-                type="button"
-                onClick={() => updateConfig('aspectRatio', ratio.id)}
-                className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all cursor-pointer relative ${
-                  isSelected
-                    ? 'border-violet-600 bg-violet-50 dark:bg-violet-950/60 text-violet-900 dark:text-violet-100 ring-2 ring-violet-500/30 shadow-sm'
-                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-violet-300 dark:hover:border-slate-700'
-                }`}
-              >
-                {ratio.badge && (
-                  <span className={`absolute top-2.5 right-2.5 text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
-                    isSelected
-                      ? 'bg-violet-600 text-white'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                  }`}>
-                    {ratio.badge}
-                  </span>
-                )}
-                <Icon className="h-6 w-6 mb-2 text-violet-600 dark:text-violet-400" />
-                <span className="text-sm font-extrabold font-mono">{ratio.label}</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-snug text-center">{ratio.sub}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Framing treatment if 9:16 is selected (Spacious Full Width) */}
-        {config.aspectRatio === '9:16' && (
-          <div className="space-y-4 pt-3 border-t border-slate-200 dark:border-slate-800">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                {t.controls.verticalTreatment}
-              </span>
-              <span className="text-[11px] font-mono font-bold text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-950/70 px-2.5 py-0.5 rounded border border-violet-200 dark:border-violet-800">
-                {config.verticalStyle === 'center-crop'
-                  ? (isId ? `Crop Tengah (${config.zoomOutPercent ?? 20}% Zoom-Out)` : `Center Crop (${config.zoomOutPercent ?? 20}% Zoom-Out)`)
-                  : config.verticalStyle === 'blur-background'
-                  ? (isId ? 'Latar Blur Penuh' : 'Blur Background')
-                  : (isId ? 'Bilah Hitam' : 'Letterbox')}
-              </span>
-            </div>
-
-            {/* 3 Clear Vertical Modes: Crop Tengah Zoom-Out, Latar Blur, Bilah Hitam */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
-              {[
-                { 
-                  id: 'center-crop' as VerticalStyle, 
-                  label: isId ? 'Crop Tengah (Zoom-Out)' : 'Center Crop (Zoomed-Out)', 
-                  badge: isId ? 'Pas & Luas' : 'Recommended',
-                  desc: isId ? 'Frame pas di tengah (50%), di-zoom out proporsional agar tidak terlalu sempit dan tanpa stretch sama sekali' : 'Centered framing, comfortably zoomed out without tight crop or stretch',
-                  highlight: true 
-                },
-                { 
-                  id: 'blur-background' as VerticalStyle, 
-                  label: isId ? 'Latar Blur Penuh' : 'Full Blur Background', 
-                  badge: isId ? '100% Utuh' : 'Full View',
-                  desc: isId ? 'Video 16:9 asli utuh di tengah tanpa terpotong sampingnya, dengan latar blur bergerak di atas & bawah' : 'Full 16:9 width centered with blurred backdrop',
-                  highlight: false
-                },
-                { 
-                  id: 'letterbox' as VerticalStyle, 
-                  label: isId ? 'Bilah Hitam (Letterbox)' : 'Letterbox Bars', 
-                  badge: isId ? 'Sinematik' : 'Classic',
-                  desc: isId ? 'Video 16:9 utuh di tengah dengan bilah hitam sinematik rapi di bagian atas & bawah' : 'Centered with clean black bars',
-                  highlight: false
-                },
-              ].map((style) => (
-                <button
-                  key={style.id}
-                  type="button"
-                  onClick={() => updateConfig('verticalStyle', style.id)}
-                  className={`p-4 rounded-xl transition-all text-left cursor-pointer font-medium leading-normal border relative flex flex-col justify-between gap-2.5 ${
-                    config.verticalStyle === style.id
-                      ? 'bg-violet-600 text-white font-bold border-violet-600 shadow-md ring-2 ring-violet-500/25'
-                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-slate-800 hover:border-violet-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="block font-bold text-xs sm:text-sm">{style.label}</span>
-                    {style.badge && (
-                      <span className={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
-                        config.verticalStyle === style.id
-                          ? 'bg-violet-800 text-violet-100'
-                          : style.highlight
-                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                      }`}>
-                        {style.badge}
-                      </span>
-                    )}
-                  </div>
-                  <span className={`text-[11px] leading-relaxed ${config.verticalStyle === style.id ? 'text-violet-100' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {style.desc}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* Informative Banner & Zoom-Out Controls based on Selected Mode (Full Width) */}
-            {config.verticalStyle === 'center-crop' && (
-              <div className="rounded-xl bg-violet-500/10 dark:bg-violet-950/40 border border-violet-500/30 p-4 space-y-3.5 animate-in fade-in duration-200">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-violet-800 dark:text-violet-300 font-bold text-xs">
-                    <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0" />
-                    <span>{isId ? 'Tingkat Zoom-Out Frame (Bebas Stretch & Lebih Luas)' : 'Frame Zoom-Out Level (No Stretch & Wider Perspective)'}</span>
-                  </div>
-                  <span className="text-xs font-mono font-bold text-violet-700 dark:text-violet-300 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-violet-200 dark:border-violet-800 shadow-xs">
-                    {config.zoomOutPercent ?? 20}% Zoom-Out
-                  </span>
-                </div>
-
-                {/* Preset Pills */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0 font-medium">{isId ? 'Pilihan Cepat:' : 'Quick Presets:'}</span>
-                  {[
-                    { val: 10, label: isId ? '10% (Fokus Rapat)' : '10% (Close)' },
-                    { val: 20, label: isId ? '20% (Nyaman & Pas - Default)' : '20% (Optimal Default)' },
-                    { val: 30, label: isId ? '30% (Ekstra Luas)' : '30% (Wide)' },
-                  ].map((p) => (
-                    <button
-                      key={p.val}
-                      type="button"
-                      onClick={() => updateConfig('zoomOutPercent', p.val)}
-                      className={`px-3 py-1.5 text-xs font-mono rounded-lg transition-colors cursor-pointer ${
-                        (config.zoomOutPercent ?? 20) === p.val
-                          ? 'bg-violet-600 text-white font-bold shadow-xs'
-                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-violet-100 dark:hover:bg-violet-900/40 border border-slate-200 dark:border-slate-700'
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Range Slider */}
-                <div className="space-y-1.5 pt-1">
-                  <input
-                    type="range"
-                    min={5}
-                    max={40}
-                    step={1}
-                    value={config.zoomOutPercent ?? 20}
-                    onChange={(e) => updateConfig('zoomOutPercent', parseInt(e.target.value, 10))}
-                    className="w-full accent-violet-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
-                  />
-                  <div className="flex justify-between text-[11px] text-slate-400 font-mono">
-                    <span>{isId ? '5% (Lebih Fokus)' : '5% (Focused)'}</span>
-                    <span>{isId ? '40% (Maksimal Luas)' : '40% (Max View)'}</span>
-                  </div>
-                </div>
-
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed border-t border-violet-500/20 pt-2.5">
-                  {isId 
-                    ? '✓ Posisi framing tetap terkunci di titik tengah (50%). Zoom-out memperluas ruang pandang subjek secara proporsional sehingga kepala dan bahu tidak terpotong sempit, tanpa deformasi atau distorsi sedikitpun.' 
-                    : '✓ Framing remains locked at the exact center (50%). Zoom-out proportionally expands the field of view so the subject is never cramped, with zero stretching or distortion.'}
-                </p>
-              </div>
-            )}
-
-            {config.verticalStyle === 'blur-background' && (
-              <div className="rounded-xl bg-sky-500/10 dark:bg-sky-950/40 border border-sky-500/30 p-4 space-y-2 animate-in fade-in duration-200">
-                <div className="flex items-center gap-2 text-sky-800 dark:text-sky-300 font-bold text-xs">
-                  <Video className="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0" />
-                  <span>{isId ? 'Mode Latar Blur Penuh Aktif' : 'Full Blur Background Mode Active'}</span>
-                </div>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  {isId 
-                    ? 'Seluruh video asli 16:9 tetap utuh di tengah tanpa terpotong sampingnya, dengan latar belakang video yang dibesarkan dan diburamkan secara artistik di bagian atas dan bawah.' 
-                    : 'The full 16:9 video is centered without cropping edges, backed by an enlarged, artistically blurred video layer on the top and bottom.'}
-                </p>
-              </div>
-            )}
-
-            {config.verticalStyle === 'letterbox' && (
-              <div className="rounded-xl bg-slate-500/10 dark:bg-slate-800/40 border border-slate-500/30 p-4 space-y-2 animate-in fade-in duration-200">
-                <div className="flex items-center gap-2 text-slate-800 dark:text-slate-300 font-bold text-xs">
-                  <Monitor className="h-4 w-4 text-slate-600 dark:text-slate-400 shrink-0" />
-                  <span>{isId ? 'Mode Bilah Hitam (Letterbox) Aktif' : 'Letterbox Black Bars Mode Active'}</span>
-                </div>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  {isId 
-                    ? 'Video 16:9 ditampilkan utuh di tengah layar dengan bilah hitam sinematik di bagian atas dan bawah frame 9:16.' 
-                    : 'The 16:9 video is presented fully centered with classic black letterbox bars at the top and bottom of the vertical 9:16 frame.'}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Module 3: Pilihan Resolusi Ekspor — Clean, Direct, and Minimalist (1080p, 720p, 480p, 360p) */}
@@ -505,12 +327,12 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
         </div>
       </div>
 
-      {/* Module 4: Watermark DriaClip — Strategic Anti-Crop & Brand Protection */}
-      <div className="rounded-2xl border border-violet-200/80 dark:border-violet-900/40 bg-violet-50/40 dark:bg-[#13112c]/40 p-5 sm:p-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      {/* Module 4: Watermark Kustom & Perlindungan Konten — Manual Input, Aesthetic Themes & Strategic Anti-Crop */}
+      <div className="rounded-2xl border border-violet-200/80 dark:border-violet-900/40 bg-violet-50/40 dark:bg-[#13112c]/40 p-5 sm:p-6 space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-violet-200/60 dark:border-violet-900/40 pb-3.5">
           <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-            <span>{isId ? 'Watermark DriaClip (Perlindungan Anti-Crop)' : 'DriaClip Watermark (Anti-Crop Protection)'}</span>
+            <span>{isId ? 'Watermark Kustom & Perlindungan Konten' : 'Custom Watermark & Brand Protection'}</span>
           </label>
 
           <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-300/60 dark:border-emerald-800">
@@ -519,112 +341,239 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
           </span>
         </div>
 
-        {/* Toggle & Positioning Controls */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-xl bg-white/80 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800">
-            <div className="space-y-0.5 pr-3">
-              <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block">
-                {isId ? 'Sematkan Watermark DriaClip pada Hasil Video' : 'Embed DriaClip Watermark on Output Clips'}
-              </span>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                {isId 
-                  ? 'Menjaga kepemilikan konten saat video diunduh, disebarkan, atau di-repost oleh orang lain.' 
-                  : 'Preserves your content branding when video is downloaded, distributed, or reposted by third parties.'}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => updateConfig('watermark', config.watermark === false ? true : false)}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                config.watermark !== false ? 'bg-violet-600' : 'bg-slate-300 dark:bg-slate-700'
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                  config.watermark !== false ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </button>
+        {/* Master Toggle */}
+        <div className="flex items-center justify-between p-3.5 rounded-xl bg-white/80 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <div className="space-y-0.5 pr-3">
+            <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block">
+              {isId ? 'Sematkan Watermark Kustom pada Klip Video' : 'Embed Custom Watermark on Output Clips'}
+            </span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+              {isId 
+                ? 'Klaim hak cipta dan bangun branding Anda. Watermark tidak akan terpotong algoritma TikTok/Reels.' 
+                : 'Claim content ownership and build creator branding with anti-crop safe zone positioning.'}
+            </p>
           </div>
 
-          {config.watermark !== false && (
-            <div className="space-y-2 pt-1 animate-in fade-in duration-200">
-              <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                <span>{isId ? 'Pilihan Posisi Strategis:' : 'Strategic Position:'}</span>
-                <span className="text-[10px] text-violet-600 dark:text-violet-400 font-mono">
-                  {isId ? 'Anti-Crop Safe Zone' : 'Anti-Crop Safe Zone'}
+          <button
+            type="button"
+            onClick={() => updateConfig('watermark', config.watermark === false ? true : false)}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              config.watermark !== false ? 'bg-violet-600' : 'bg-slate-300 dark:bg-slate-700'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                config.watermark !== false ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {config.watermark !== false && (
+          <div className="space-y-5 pt-1 animate-in fade-in duration-200">
+            {/* 1. Manual Text Input (Bisa di-input / di-edit manual oleh pengunjung) */}
+            <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Type className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                  <span>{isId ? 'Teks Watermark (Input / Edit Manual):' : 'Watermark Text (Manual Input & Edit):'}</span>
+                </label>
+                <span className="text-[10px] font-mono text-slate-400">
+                  {((config.watermarkText ?? 'DriaClip').length)}/35 {isId ? 'karakter' : 'chars'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {[
-                  {
-                    id: 'safe-top-left',
-                    title: isId ? 'Kiri Atas' : 'Upper-Left',
-                    badge: isId ? 'Paling Direkomendasikan' : 'Recommended',
-                    desc: isId 
-                      ? 'Bebas tombol Like/Share TikTok & subtitle bawah. Mustahil di-crop tanpa memotong wajah.' 
-                      : 'Free from Like/Share buttons & captions. Impossible to crop without cutting the face.'
-                  },
-                  {
-                    id: 'safe-top-right',
-                    title: isId ? 'Kanan Atas' : 'Upper-Right',
-                    badge: isId ? 'Area Aman' : 'Safe Area',
-                    desc: isId 
-                      ? 'Di atas tombol interaksi Reels/TikTok, tetap terlihat jelas.' 
-                      : 'Above Reels/TikTok interaction buttons, remains clearly visible.'
-                  },
-                  {
-                    id: 'center-top',
-                    title: isId ? 'Tengah Atas' : 'Center-Top',
-                    badge: isId ? 'Fokus Atas' : 'Top Center',
-                    desc: isId 
-                      ? 'Di tengah bagian atas, di bawah status bar ponsel.' 
-                      : 'Centered at the top, just below the mobile status bar.'
-                  }
-                ].map((pos) => {
-                  const isSelected = (config.watermarkPosition || 'safe-top-left') === pos.id;
-                  return (
-                    <button
-                      key={pos.id}
-                      type="button"
-                      onClick={() => updateConfig('watermarkPosition', pos.id as any)}
-                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
-                        isSelected
-                          ? 'border-violet-600 bg-violet-600/10 dark:bg-violet-950/40 text-violet-900 dark:text-violet-100 ring-1 ring-violet-500'
-                          : 'border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 hover:border-violet-400 dark:hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold">{pos.title}</span>
-                          {pos.badge && (
-                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300">
-                              {pos.badge}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
-                          {pos.desc}
-                        </p>
-                      </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  maxLength={35}
+                  value={config.watermarkText ?? 'DriaClip'}
+                  onChange={(e) => updateConfig('watermarkText', e.target.value)}
+                  placeholder={isId ? 'Ketik watermark Anda (contoh: @namachannel, DriaClip, dll.)' : 'Type watermark text (e.g. @username, Brand, DriaClip)'}
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:outline-none transition-all font-mono font-medium"
+                />
+                {config.watermarkText && config.watermarkText !== 'DriaClip' && (
+                  <button
+                    type="button"
+                    onClick={() => updateConfig('watermarkText', 'DriaClip')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-400 hover:text-violet-500 px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 cursor-pointer transition-colors"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
 
-                      {/* Visual Badge Preview Mini */}
-                      <div className="mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center gap-1.5">
-                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-950/85 border border-violet-500/70 text-white text-[9px] font-bold shadow-xs">
-                          <span className="h-1 w-1 rounded-full bg-violet-400 shrink-0" />
-                          <span>DriaClip</span>
-                        </div>
-                        {isSelected && <Check className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 ml-auto" />}
-                      </div>
-                    </button>
-                  );
-                })}
+              {/* Quick suggestion chips */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mr-1">
+                  {isId ? 'Pilihan Cepat:' : 'Quick Presets:'}
+                </span>
+                {[
+                  'DriaClip',
+                  '@Kreator',
+                  'Follow For More',
+                  'Official Video'
+                ].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => updateConfig('watermarkText', preset)}
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded-md border transition-all cursor-pointer ${
+                      (config.watermarkText ?? 'DriaClip') === preset
+                        ? 'border-violet-500 bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 font-bold'
+                        : 'border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-violet-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
-        </div>
+
+
+            {/* 3. Strategic Anti-Crop Positions & Live Mockup Preview */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-1">
+              {/* Positions List (2 cols on large screen) */}
+              <div className="lg:col-span-2 space-y-2">
+                <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <span>{isId ? 'Posisi Penempatan Aman (Anti-Crop):' : 'Anti-Crop Safe Placement:'}</span>
+                  <span className="text-[10px] text-violet-600 dark:text-violet-400 font-mono">
+                    Safe-Zone Protected
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[
+                    {
+                      id: 'safe-top-left',
+                      title: isId ? 'Kiri Atas' : 'Upper-Left',
+                      badge: isId ? 'Direkomendasikan' : 'Recommended',
+                      desc: isId 
+                        ? 'Bebas tombol Like/Share TikTok & subtitle bawah.' 
+                        : 'Free from TikTok/Reels buttons and lower captions.'
+                    },
+                    {
+                      id: 'safe-top-right',
+                      title: isId ? 'Kanan Atas' : 'Upper-Right',
+                      badge: isId ? 'Area Aman' : 'Safe Area',
+                      desc: isId 
+                        ? 'Di atas tombol interaksi vertikal, terlihat jelas.' 
+                        : 'Above vertical interaction stack, stays visible.'
+                    },
+                    {
+                      id: 'center-top',
+                      title: isId ? 'Tengah Atas' : 'Center-Top',
+                      badge: isId ? 'Fokus Simetris' : 'Top Center',
+                      desc: isId 
+                        ? 'Tepat di tengah bagian atas frame video.' 
+                        : 'Directly centered at the top of the video frame.'
+                    },
+                    {
+                      id: 'safe-bottom-left',
+                      title: isId ? 'Kiri Bawah (Aman)' : 'Lower-Left (Safe)',
+                      badge: isId ? 'Area Sudut' : 'Corner',
+                      desc: isId 
+                        ? 'Di atas bilah pencarian & teks deskripsi bawah.' 
+                        : 'Above bottom player scrubber and title captions.'
+                    },
+                    {
+                      id: 'safe-bottom-right',
+                      title: isId ? 'Kanan Bawah (Aman)' : 'Lower-Right (Safe)',
+                      badge: isId ? 'Area Sudut' : 'Corner',
+                      desc: isId 
+                        ? 'Di sudut kanan bawah frame aman video.' 
+                        : 'Positioned safely in the bottom right corner.'
+                    }
+                  ].map((pos) => {
+                    const isSelected = (config.watermarkPosition || 'safe-top-left') === pos.id;
+                    return (
+                      <button
+                        key={pos.id}
+                        type="button"
+                        onClick={() => updateConfig('watermarkPosition', pos.id as WatermarkPosition)}
+                        className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                          isSelected
+                            ? 'border-violet-600 bg-violet-600/10 dark:bg-violet-950/40 text-violet-900 dark:text-violet-100 ring-1 ring-violet-500'
+                            : 'border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 hover:border-violet-400 dark:hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold">{pos.title}</span>
+                            {pos.badge && (
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300">
+                                {pos.badge}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
+                            {pos.desc}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Live Interactive Phone Mockup Preview */}
+              <div className="flex flex-col items-center justify-center p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-950 text-white space-y-2">
+                <div className="flex items-center justify-between w-full text-[10px] font-mono text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Eye className="h-3 w-3 text-violet-400" />
+                    <span>{isId ? 'Pratinjau Langsung (Live)' : 'Live Preview'}</span>
+                  </span>
+                  <span className="text-violet-400 font-bold">9:16 Frame</span>
+                </div>
+
+                {/* Simulated Phone Screen */}
+                <div className="relative w-full max-w-[190px] aspect-[9/16] rounded-xl overflow-hidden border-2 border-slate-700 bg-slate-900 shadow-xl flex items-center justify-center select-none">
+                  {/* Subtle video background simulation */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 opacity-90" />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.15),transparent_70%)]" />
+
+                  {/* Simulated right-side interaction icons (like, comment, share) */}
+                  <div className="absolute right-1.5 bottom-12 flex flex-col items-center gap-2 opacity-50 pointer-events-none">
+                    <div className="w-3.5 h-3.5 rounded-full bg-white/60" />
+                    <div className="w-3.5 h-3.5 rounded-full bg-white/60" />
+                    <div className="w-3.5 h-3.5 rounded-full bg-white/60" />
+                  </div>
+
+                  {/* Simulated bottom caption */}
+                  <div className="absolute bottom-2 left-2 right-8 space-y-1 opacity-50 pointer-events-none">
+                    <div className="h-1.5 w-16 bg-white/70 rounded-full" />
+                    <div className="h-1.5 w-24 bg-white/40 rounded-full" />
+                  </div>
+
+                  {/* Dynamic Watermark Badge positioned according to state */}
+                  <div
+                    className={`absolute z-20 transition-all duration-300 drop-shadow-md ${
+                      config.watermarkPosition === 'safe-top-right'
+                        ? 'top-3 right-2'
+                        : config.watermarkPosition === 'center-top'
+                        ? 'top-3 left-1/2 -translate-x-1/2'
+                        : config.watermarkPosition === 'safe-bottom-left'
+                        ? 'bottom-10 left-2'
+                        : config.watermarkPosition === 'safe-bottom-right'
+                        ? 'bottom-10 right-2'
+                        : 'top-3 left-2'
+                    }`}
+                  >
+                    <WatermarkBadge
+                      text={config.watermarkText || 'DriaClip'}
+                      style={config.watermarkStyle || 'neon-glow'}
+                      size="xs"
+                    />
+                  </div>
+                </div>
+
+                <span className="text-[10px] text-slate-400 text-center leading-tight">
+                  {isId ? 'Tampilan badge pada video vertikal TikTok & Reels' : 'Simulated live appearance on TikTok & Reels'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Action Trigger Bar */}

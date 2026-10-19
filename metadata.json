@@ -1,6 +1,6 @@
 {
-  "name": "DriaClip by Driacom",
-  "description": "Automated and semi-automated video trimming & highlight clipping platform by Driacom. Process long-form video into viral short clips with custom durations and aspect ratios.",
+  "name": "DriaClip – Clip Video Secara Gratis Cocok untuk para Clipper",
+  "description": "Platform clip video secara gratis cocok untuk para clipper. Potong video panjang jadi klip pendek viral 9:16 TikTok, Reels & Shorts otomatis di clip.driacom.com.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -1,54 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xhtml="http://www.w3.org/1999/xhtml">
-  <!-- Homepage -->
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
+  <!-- Homepage: DriaClip - Clip Video Secara Gratis Cocok untuk para Clipper -->
   <url>
-    <loc>https://driaclip.driacom.com/</loc>
-    <lastmod>2026-09-28</lastmod>
+    <loc>https://clip.driacom.com/</loc>
+    <lastmod>2026-10-19</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="en" href="https://driaclip.driacom.com/?lang=en" />
-    <xhtml:link rel="alternate" hreflang="id" href="https://driaclip.driacom.com/?lang=id" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://driaclip.driacom.com/" />
+    <xhtml:link rel="alternate" hreflang="id" href="https://clip.driacom.com/?lang=id" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://clip.driacom.com/?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://clip.driacom.com/" />
   </url>
 
-  <!-- About Us -->
+  <!-- Workspace / Video Clipper Tool Section -->
   <url>
-    <loc>https://driaclip.driacom.com/about</loc>
-    <lastmod>2026-09-28</lastmod>
-    <changefreq>monthly</changefreq>
+    <loc>https://clip.driacom.com/#workspace</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- How It Works Guide for Clippers -->
+  <url>
+    <loc>https://clip.driacom.com/#guide</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="en" href="https://driaclip.driacom.com/about?lang=en" />
-    <xhtml:link rel="alternate" hreflang="id" href="https://driaclip.driacom.com/about?lang=id" />
+  </url>
+
+  <!-- Clipper FAQ Section -->
+  <url>
+    <loc>https://clip.driacom.com/#faq</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- About DriaCom -->
+  <url>
+    <loc>https://clip.driacom.com/about</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://clip.driacom.com/about?lang=id" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://clip.driacom.com/about?lang=en" />
   </url>
 
   <!-- Contact Us -->
   <url>
-    <loc>https://driaclip.driacom.com/contact</loc>
-    <lastmod>2026-09-28</lastmod>
+    <loc>https://clip.driacom.com/contact</loc>
+    <lastmod>2026-10-19</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="en" href="https://driaclip.driacom.com/contact?lang=en" />
-    <xhtml:link rel="alternate" hreflang="id" href="https://driaclip.driacom.com/contact?lang=id" />
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://clip.driacom.com/contact?lang=id" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://clip.driacom.com/contact?lang=en" />
   </url>
 
   <!-- Privacy Policy -->
   <url>
-    <loc>https://driaclip.driacom.com/privacy</loc>
-    <lastmod>2026-09-28</lastmod>
+    <loc>https://clip.driacom.com/privacy</loc>
+    <lastmod>2026-10-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
-    <xhtml:link rel="alternate" hreflang="en" href="https://driaclip.driacom.com/privacy?lang=en" />
-    <xhtml:link rel="alternate" hreflang="id" href="https://driaclip.driacom.com/privacy?lang=id" />
+    <xhtml:link rel="alternate" hreflang="id" href="https://clip.driacom.com/privacy?lang=id" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://clip.driacom.com/privacy?lang=en" />
   </url>
 
   <!-- Disclaimer & Copyright Guidelines -->
   <url>
-    <loc>https://driaclip.driacom.com/disclaimer</loc>
-    <lastmod>2026-09-28</lastmod>
+    <loc>https://clip.driacom.com/disclaimer</loc>
+    <lastmod>2026-10-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
-    <xhtml:link rel="alternate" hreflang="en" href="https://driaclip.driacom.com/disclaimer?lang=en" />
-    <xhtml:link rel="alternate" hreflang="id" href="https://driaclip.driacom.com/disclaimer?lang=id" />
+    <xhtml:link rel="alternate" hreflang="id" href="https://clip.driacom.com/disclaimer?lang=id" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://clip.driacom.com/disclaimer?lang=en" />
   </url>
 </urlset>

@@ -180,20 +180,33 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
 
   const togglePlay = async () => {
     if (!videoRef.current) return;
+
+    // Guard: Prevent play() if no valid video source exists or video has errored
+    if (!source?.url || videoRef.current.error || videoRef.current.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
+      console.warn('[DriaClip] No playable video source available on timeline');
+      setIsPlaying(false);
+      return;
+    }
+
     if (videoRef.current.paused) {
       try {
         await videoRef.current.play();
         setIsPlaying(true);
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.name === 'NotSupportedError' || err?.message?.includes('no supported sources')) {
+          console.warn('[DriaClip] Video playback format not supported by browser engine:', err?.message);
+          setIsPlaying(false);
+          return;
+        }
         console.warn('Playback with audio blocked by browser policy, retrying muted:', err);
-        if (videoRef.current) {
+        if (videoRef.current && !videoRef.current.error) {
           videoRef.current.muted = true;
           setIsMuted(true);
           try {
             await videoRef.current.play();
             setIsPlaying(true);
-          } catch (e2) {
-            console.error('Playback failed completely:', e2);
+          } catch (e2: any) {
+            console.warn('[DriaClip] Playback could not be started:', e2?.message || e2);
             setIsPlaying(false);
           }
         }
@@ -386,6 +399,10 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
               muted={isMuted}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
+              onError={(e) => {
+                console.warn('[DriaClip] Timeline video error caught gracefully:', e);
+                setIsPlaying(false);
+              }}
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
               onDurationChange={handleDurationChange}

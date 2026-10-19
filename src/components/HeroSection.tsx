@@ -33,19 +33,19 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       <div className="relative z-10 max-w-5xl mx-auto space-y-8">
         {/* Top High-Tech Trust Badges */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="inline-flex items-center justify-center gap-2 rounded-full bg-violet-50 dark:bg-violet-950/70 border border-violet-200 dark:border-violet-500/40 px-3.5 py-1 text-xs font-bold text-violet-800 dark:text-violet-300 shadow-xs font-mono leading-none">
-            <span className="flex h-2 w-2 rounded-full bg-violet-600 dark:bg-violet-400 animate-pulse" />
-            <span>{isId ? 'ENGINE GENERASI TERBARU 2026' : 'NEXT-GEN 2026 CLIPPING ENGINE'}</span>
+          <div className="inline-flex items-center justify-center gap-2 rounded-full bg-violet-600 dark:bg-violet-600 text-white px-4 py-1.5 text-xs font-black shadow-md shadow-violet-500/25 tracking-wide leading-none">
+            <span className="flex h-2 w-2 rounded-full bg-white animate-pulse" />
+            <span>{isId ? 'CLIP VIDEO SECARA GRATIS COCOK UNTUK PARA CLIPPER' : 'FREE VIDEO CLIPPER FOR SHORT-FORM CREATORS'}</span>
           </div>
 
-          <div className="hidden sm:inline-flex items-center justify-center gap-1.5 rounded-full bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800/50 px-3 py-1 text-[11px] font-semibold text-cyan-800 dark:text-cyan-300 font-mono leading-none">
+          <div className="inline-flex items-center justify-center gap-1.5 rounded-full bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800/50 px-3 py-1 text-[11px] font-semibold text-cyan-800 dark:text-cyan-300 font-mono leading-none">
             <Zap className="h-3 w-3 text-cyan-600 dark:text-cyan-400" />
-            <span>{isId ? 'FFmpeg 6.1 • 60 FPS Presisi' : 'FFmpeg 6.1 • 60 FPS Precision'}</span>
+            <span>clip.driacom.com</span>
           </div>
 
-          <div className="hidden md:inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-3 py-1 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 font-mono leading-none">
+          <div className="hidden sm:inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-3 py-1 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 font-mono leading-none">
             <ShieldCheck className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-            <span>{isId ? 'Tanpa Watermark & Privasi Aman' : 'Zero Watermark & 100% Privacy'}</span>
+            <span>{isId ? '100% Gratis • Tanpa Watermark Paksa' : '100% Free • No Forced Watermark'}</span>
           </div>
         </div>
 
@@ -55,19 +55,19 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             {isId ? (
               <>
                 <span className="block text-slate-900 dark:text-white">
-                  Pemotong Video Otomatis &
+                  Clip Video Secara Gratis
                 </span>
                 <span className="bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 bg-clip-text text-transparent">
-                  AI Smart Highlight Clipper
+                  Cocok untuk Para Clipper
                 </span>
               </>
             ) : (
               <>
                 <span className="block text-slate-900 dark:text-white">
-                  Automated Video Trimmer &
+                  Free Video Clipper Tool
                 </span>
                 <span className="bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 bg-clip-text text-transparent">
-                  High-Precision AI Highlight Clipper
+                  Automated 9:16 Shorts & Reels Maker
                 </span>
               </>
             )}
@@ -77,11 +77,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           <p className="text-base sm:text-lg lg:text-xl font-medium text-slate-700 dark:text-slate-300 max-w-3xl leading-relaxed">
             {isId ? (
               <>
-                Ubah rekaman video panjang dari <strong className="text-violet-700 dark:text-violet-300 font-bold">YouTube</strong> atau <strong className="text-violet-700 dark:text-violet-300 font-bold">file offline MP4/WebM</strong> menjadi puluhan video vertikal <strong className="text-cyan-700 dark:text-cyan-300 font-bold">9:16 viral</strong> untuk TikTok, Instagram Reels, dan YouTube Shorts. Sistem otomatis membaca durasi asli tanpa konfirmasi manual, mendeteksi hook retensi, dan memotong adegan dengan presisi frame.
+                Platform pemotong video online gratis di <strong className="text-violet-700 dark:text-violet-300 font-bold">clip.driacom.com</strong>. Ubah rekaman video panjang dari <strong className="text-violet-700 dark:text-violet-300 font-bold">berkas penyimpanan (MP4, WebM, MOV, MKV)</strong> menjadi puluhan video vertikal <strong className="text-cyan-700 dark:text-cyan-300 font-bold">9:16 otomatis</strong> untuk TikTok, Instagram Reels, dan YouTube Shorts dengan crop presisi dan siap unduh.
               </>
             ) : (
               <>
-                Transform long-form footage from <strong className="text-violet-700 dark:text-violet-300 font-bold">YouTube links</strong> or <strong className="text-violet-700 dark:text-violet-300 font-bold">offline MP4 files</strong> into dozens of viral <strong className="text-cyan-700 dark:text-cyan-300 font-bold">9:16 vertical shorts</strong> for TikTok, Reels, and Shorts. Features automated duration reading, speech spike analysis, and frame-accurate cutting.
+                Free online video clipping platform on <strong className="text-violet-700 dark:text-violet-300 font-bold">clip.driacom.com</strong>. Transform long-form footage from <strong className="text-violet-700 dark:text-violet-300 font-bold">your device storage files (MP4, WebM, MOV, MKV)</strong> into dozens of viral <strong className="text-cyan-700 dark:text-cyan-300 font-bold">9:16 vertical shorts</strong> for TikTok, Reels, and Shorts.
               </>
             )}
           </p>
@@ -123,7 +123,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </div>
             <div className="min-w-0">
               <span className="block text-xs font-bold text-slate-900 dark:text-white truncate">
-                {isId ? 'YouTube & File 2GB' : 'YouTube & 2GB Files'}
+                {isId ? 'Berkas Storage s/d 2GB' : 'Storage Files up to 2GB'}
               </span>
               <span className="block text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                 {isId ? 'Pratinjau Playback Aktif' : 'Live Player Preview'}

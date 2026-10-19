@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, Check, Clock, Edit3, Sparkles, MoveHorizontal, ShieldCheck } from 'lucide-react';
-import { GeneratedClip, VideoSourceMetadata } from '../types/driaclip';
+import { X, Check, Clock, Edit3, Sparkles, MoveHorizontal, ShieldCheck, Palette, Type } from 'lucide-react';
+import { GeneratedClip, VideoSourceMetadata, WatermarkStyle, WatermarkPosition } from '../types/driaclip';
 import { formatTimeCode } from '../services/videoClipper';
 import { Language } from '../i18n/translations';
+import { WatermarkBadge } from './WatermarkBadge';
 
 interface ClipFineTuneModalProps {
   clip: GeneratedClip | null;
@@ -29,9 +30,12 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
   const [startTime, setStartTime] = useState(clip.startTime);
   const [endTime, setEndTime] = useState(clip.endTime);
   const [watermark, setWatermark] = useState(clip.watermark !== false);
-  const [watermarkPosition, setWatermarkPosition] = useState<'safe-top-left' | 'safe-top-right' | 'center-top'>(
+  const [watermarkText, setWatermarkText] = useState(clip.watermarkText || 'DriaClip');
+  const [watermarkStyle, setWatermarkStyle] = useState<WatermarkStyle>(clip.watermarkStyle || 'neon-glow');
+  const [watermarkPosition, setWatermarkPosition] = useState<WatermarkPosition>(
     clip.watermarkPosition || 'safe-top-left'
   );
+  const [cropPositionX, setCropPositionX] = useState<number>(clip.cropPositionX ?? 50);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const duration = Math.max(1, endTime - startTime);
@@ -62,7 +66,10 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
       startTime: Math.round(startTime),
       endTime: Math.round(endTime),
       duration: Math.round(endTime - startTime),
+      cropPositionX,
       watermark,
+      watermarkText: watermarkText.trim() || 'DriaClip',
+      watermarkStyle,
       watermarkPosition,
     });
     onClose();
@@ -188,34 +195,81 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
             <span className="font-semibold text-neutral-200">{duration} {isId ? 'detik' : 'seconds'}</span>
           </div>
 
-          {/* Framing Status Banner */}
+          {/* Interactive Frame Positioning & Shift Controls */}
           {clip.aspectRatio === '9:16' && (
-            <div className="rounded-xl border border-violet-500/30 bg-violet-950/30 p-3.5 space-y-1.5">
+            <div className="rounded-xl border border-violet-500/40 bg-violet-950/30 p-3.5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-violet-300 font-bold text-xs">
-                  <Sparkles className="h-3.5 w-3.5 text-violet-400" />
-                  <span>{isId ? `Crop Tengah (Zoom-Out ${clip.zoomOutPercent ?? 20}%)` : `Center Crop (${clip.zoomOutPercent ?? 20}% Zoom-Out)`}</span>
+                  <MoveHorizontal className="h-4 w-4 text-violet-400" />
+                  <span>{isId ? 'Atur & Geser Posisi Frame Kamera' : 'Adjust & Shift Camera Frame'}</span>
                 </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-violet-900/60 text-violet-300 border border-violet-600/50">
-                  {isId ? 'Bebas Stretch' : 'No Stretch'}
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-violet-900/60 text-violet-200 border border-violet-600/50 font-bold">
+                  {cropPositionX}%
                 </span>
               </div>
               <p className="text-[11px] text-neutral-300 leading-relaxed">
                 {isId
-                  ? 'Frame diposisikan pas di tengah video (50%) dengan zoom-out proporsional sehingga subjek memiliki ruang pandang yang nyaman dan tidak terpotong sempit.'
-                  : 'Framing is locked directly in the center (50%) with a comfortable zoom-out margin for a wide, natural perspective.'}
+                  ? 'Geser kamera crop ke kiri atau kanan agar subjek / orang pas di tengah layar sebelum klip disimpan.'
+                  : 'Shift camera frame left or right so the subject is centered before saving.'}
               </p>
+
+              {/* Quick Nudge Buttons */}
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCropPositionX((prev) => Math.max(0, prev - 15))}
+                  className="py-1.5 px-2 rounded-lg border border-neutral-700 hover:border-violet-500 bg-neutral-900 text-xs font-semibold text-white transition-colors cursor-pointer"
+                >
+                  &larr; {isId ? 'Kiri' : 'Left'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCropPositionX(50)}
+                  className={`py-1.5 px-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
+                    cropPositionX === 50
+                      ? 'border-violet-500 bg-violet-600/30 text-violet-200 font-bold'
+                      : 'border-neutral-700 hover:border-violet-500 bg-neutral-900 text-white'
+                  }`}
+                >
+                  {isId ? 'Tengah' : 'Center'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCropPositionX((prev) => Math.min(100, prev + 15))}
+                  className="py-1.5 px-2 rounded-lg border border-neutral-700 hover:border-violet-500 bg-neutral-900 text-xs font-semibold text-white transition-colors cursor-pointer"
+                >
+                  {isId ? 'Kanan' : 'Right'} &rarr;
+                </button>
+              </div>
+
+              {/* Slider */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px] text-neutral-400 font-mono">
+                  <span>0% ({isId ? 'Kiri' : 'Left'})</span>
+                  <span className="text-violet-300 font-bold">{cropPositionX}%</span>
+                  <span>100% ({isId ? 'Kanan' : 'Right'})</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={cropPositionX}
+                  onChange={(e) => setCropPositionX(Number(e.target.value))}
+                  className="w-full h-1.5 accent-violet-500 hover:accent-violet-400 bg-neutral-800 rounded-lg cursor-pointer"
+                />
+              </div>
             </div>
           )}
 
 
 
-          {/* Watermark Protection Option */}
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-3.5 space-y-2.5">
+          {/* Watermark Protection Option (Bisa Diedit Manual per Klip) */}
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4 space-y-3.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-neutral-200 flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-violet-400" />
-                <span>{isId ? 'Watermark DriaClip (Anti-Crop)' : 'DriaClip Watermark (Anti-Crop)'}</span>
+                <span>{isId ? 'Watermark Kustom Klip (Anti-Crop)' : 'Custom Clip Watermark (Anti-Crop)'}</span>
               </span>
               <button
                 type="button"
@@ -229,18 +283,73 @@ export const ClipFineTuneModal: React.FC<ClipFineTuneModalProps> = ({
                 {watermark ? (isId ? 'Aktif' : 'Active') : (isId ? 'Nonaktif' : 'Off')}
               </button>
             </div>
+
             {watermark && (
-              <div className="flex items-center justify-between pt-1 text-[11px] border-t border-neutral-800/80">
-                <span className="text-neutral-400">{isId ? 'Posisi Safe-Zone:' : 'Safe-Zone Position:'}</span>
-                <select
-                  value={watermarkPosition}
-                  onChange={(e) => setWatermarkPosition(e.target.value as any)}
-                  className="rounded-lg bg-neutral-950 border border-neutral-700 px-2.5 py-1 text-xs text-white focus:border-violet-500 focus:outline-none cursor-pointer"
-                >
-                  <option value="safe-top-left">{isId ? 'Kiri Atas (Rekomendasi)' : 'Upper-Left (Recommended)'}</option>
-                  <option value="safe-top-right">{isId ? 'Kanan Atas' : 'Upper-Right'}</option>
-                  <option value="center-top">{isId ? 'Tengah Atas' : 'Center-Top'}</option>
-                </select>
+              <div className="space-y-3 pt-1 border-t border-neutral-800/80 animate-in fade-in duration-200">
+                {/* Manual Watermark Text Input */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-semibold text-neutral-300 flex items-center gap-1">
+                      <Type className="h-3 w-3 text-violet-400" />
+                      <span>{isId ? 'Edit Teks Watermark Manual:' : 'Edit Watermark Text:'}</span>
+                    </label>
+                    <span className="text-[9px] font-mono text-neutral-500">{watermarkText.length}/35</span>
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={35}
+                    value={watermarkText}
+                    onChange={(e) => setWatermarkText(e.target.value)}
+                    placeholder="DriaClip, @username, dll."
+                    className="w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-xs text-neutral-100 font-mono focus:border-violet-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Theme & Position Selectors */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <label className="text-[10px] text-neutral-400 block mb-1">
+                      {isId ? 'Gaya Desain:' : 'Design Style:'}
+                    </label>
+                    <select
+                      value={watermarkStyle}
+                      onChange={(e) => setWatermarkStyle(e.target.value as WatermarkStyle)}
+                      className="w-full rounded-lg bg-neutral-950 border border-neutral-700 px-2.5 py-1.5 text-xs text-white focus:border-violet-500 focus:outline-none cursor-pointer"
+                    >
+                      <option value="neon-glow">Cyber Glow (Neon Violet)</option>
+                      <option value="glass-blur">Frosted Glass</option>
+                      <option value="gradient-accent">Sunset Aurora</option>
+                      <option value="minimal-dark">Obsidian Dark</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-neutral-400 block mb-1">
+                      {isId ? 'Posisi Safe-Zone:' : 'Position:'}
+                    </label>
+                    <select
+                      value={watermarkPosition}
+                      onChange={(e) => setWatermarkPosition(e.target.value as WatermarkPosition)}
+                      className="w-full rounded-lg bg-neutral-950 border border-neutral-700 px-2.5 py-1.5 text-xs text-white focus:border-violet-500 focus:outline-none cursor-pointer"
+                    >
+                      <option value="safe-top-left">{isId ? 'Kiri Atas (Rekomendasi)' : 'Upper-Left (Recommended)'}</option>
+                      <option value="safe-top-right">{isId ? 'Kanan Atas' : 'Upper-Right'}</option>
+                      <option value="center-top">{isId ? 'Tengah Atas' : 'Center-Top'}</option>
+                      <option value="safe-bottom-left">{isId ? 'Kiri Bawah' : 'Lower-Left'}</option>
+                      <option value="safe-bottom-right">{isId ? 'Kanan Bawah' : 'Lower-Right'}</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Live Badge Mini Preview */}
+                <div className="flex items-center justify-between p-2 rounded-lg bg-neutral-950 border border-neutral-800">
+                  <span className="text-[10px] text-neutral-400">{isId ? 'Hasil Tampilan Badge:' : 'Badge Preview:'}</span>
+                  <WatermarkBadge
+                    text={watermarkText || 'DriaClip'}
+                    style={watermarkStyle}
+                    size="xs"
+                  />
+                </div>
               </div>
             )}
           </div>

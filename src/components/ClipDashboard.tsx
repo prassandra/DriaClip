@@ -23,7 +23,8 @@ import {
   AlertCircle,
   FileVideo,
   MoveHorizontal,
-  Cookie
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { 
@@ -38,6 +39,8 @@ import {
 import { GeneratedClip, VideoSourceMetadata } from '../types/driaclip';
 import { Language, TRANSLATIONS } from '../i18n/translations';
 import { SAMPLE_VIDEOS } from '../data/sampleVideos';
+import { WatermarkBadge } from './WatermarkBadge';
+import { AdSenseSlot } from './AdSenseSlot';
 
 interface ClipDashboardProps {
   clips: GeneratedClip[];
@@ -47,7 +50,6 @@ interface ClipDashboardProps {
   onUpdateClipCrop?: (clipId: string, cropX: number) => void;
   onSelectSampleVideo?: (sample: any) => void;
   lang: Language;
-  onOpenYouTubeCookiesModal?: () => void;
   onAttachVideoFile?: (file: File) => void;
 }
 
@@ -102,7 +104,12 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
   const startThumbSecond = calculateClipThumbnailTime(clip.startTime, clip.endTime);
 
   const videoSrc = clip.videoBlobUrl || source?.url || '';
-  const isYouTube = !!source?.youtubeId && !clip.videoBlobUrl;
+  const effectiveYoutubeId = source?.youtubeId || (source?.url ? (() => {
+    const reg = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+    const match = source.url.match(reg);
+    return match ? match[1] : '';
+  })() : '');
+  const isYouTube = !!effectiveYoutubeId && !clip.videoBlobUrl;
 
   // Auto detect if source video is 16:9 landscape vs 9:16 portrait
   const isSourceLandscape = source
@@ -222,6 +229,14 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
 
     if (!videoRef.current) return;
 
+    // Guard: Prevent play() if no valid video source exists or video has errored
+    if (!videoSrc || videoRef.current.error || videoRef.current.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
+      console.warn('[DriaClip] No playable video source available for this clip');
+      setIsPlaying(false);
+      onSetActivePlayingId(null);
+      return;
+    }
+
     if (videoRef.current.paused) {
       onSetActivePlayingId(clip.id);
       const cur = videoRef.current.currentTime;
@@ -232,16 +247,23 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
       try {
         await videoRef.current.play();
         setIsPlaying(true);
-      } catch (err) {
+      } catch (err: any) {
+        // If browser does not support the format, do not retry blindly
+        if (err?.name === 'NotSupportedError' || err?.message?.includes('no supported sources')) {
+          console.warn('[DriaClip] Video playback format not supported by browser engine:', err?.message);
+          setIsPlaying(false);
+          onSetActivePlayingId(null);
+          return;
+        }
         console.warn('Playback audio blocked, attempting muted playback:', err);
-        if (videoRef.current) {
+        if (videoRef.current && !videoRef.current.error) {
           videoRef.current.muted = true;
           setIsMuted(true);
           try {
             await videoRef.current.play();
             setIsPlaying(true);
-          } catch (e2) {
-            console.error('Playback failed completely:', e2);
+          } catch (e2: any) {
+            console.warn('[DriaClip] Playback could not be started:', e2?.message || e2);
             setIsPlaying(false);
             onSetActivePlayingId(null);
           }
@@ -274,13 +296,20 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
     }
 
     if (!videoRef.current) return;
+    if (!videoSrc || videoRef.current.error || videoRef.current.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
+      return;
+    }
     onSetActivePlayingId(clip.id);
     videoRef.current.currentTime = boundaryStart;
     setClipCurrentTime(boundaryStart);
     try {
       await videoRef.current.play();
       setIsPlaying(true);
-    } catch {
+    } catch (err: any) {
+      if (err?.name === 'NotSupportedError' || err?.message?.includes('no supported sources')) {
+        setIsPlaying(false);
+        return;
+      }
       videoRef.current.muted = true;
       setIsMuted(true);
       videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
@@ -339,7 +368,7 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
                   <div className="relative z-10 w-full aspect-video shadow-2xl">
                     <iframe
                       key={ytIframeKey}
-                      src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&cc_load_policy=0&cc_lang_pref=none&iv_load_policy=3&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                      src={`https://www.youtube.com/embed/${effectiveYoutubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&cc_load_policy=0&cc_lang_pref=none&iv_load_policy=3&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
                       title={clip.title}
                       className="w-full h-full border-0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -372,7 +401,7 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
                   <div className="relative z-10 w-full aspect-video shadow-2xl">
                     <iframe
                       key={ytIframeKey}
-                      src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&cc_load_policy=0&cc_lang_pref=none&iv_load_policy=3&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                      src={`https://www.youtube.com/embed/${effectiveYoutubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&cc_load_policy=0&cc_lang_pref=none&iv_load_policy=3&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
                       title={clip.title}
                       className="w-full h-full border-0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -424,7 +453,6 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
                               position: 'absolute', 
                               top: 0, 
                               left: '-108.025%',
-                              transform: `scale(${1.0 - ((clip.zoomOutPercent ?? 20) / 100) * 0.40})`,
                               transformOrigin: 'center center'
                             }
                           : isSquare
@@ -441,7 +469,7 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
                   >
                     <iframe
                       key={ytIframeKey}
-                      src={`https://www.youtube.com/embed/${source?.youtubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&cc_load_policy=0&cc_lang_pref=none&iv_load_policy=3&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
+                      src={`https://www.youtube.com/embed/${effectiveYoutubeId}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&playsinline=1&cc_load_policy=0&cc_lang_pref=none&iv_load_policy=3&start=${Math.floor(clip.startTime + ytOffset)}&end=${Math.floor(clip.endTime)}`}
                       title={clip.title}
                       className="w-full h-full border-0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -570,11 +598,14 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
               </div>
             )}
 
-            {/* Strategic DriaClip Watermark Indicator */}
-            {clip.watermark !== false && !isPlaying && (
-              <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-xs border border-violet-500/50 text-[10px] font-bold text-white shadow-md pointer-events-none">
-                <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-                <span>DriaClip</span>
+            {/* Strategic Custom Watermark Indicator */}
+            {clip.watermark !== false && (
+              <div className="absolute top-2.5 right-2.5 z-20 pointer-events-none">
+                <WatermarkBadge
+                  text={clip.watermarkText || 'DriaClip'}
+                  style={clip.watermarkStyle || 'neon-glow'}
+                  size="xs"
+                />
               </div>
             )}
 
@@ -601,6 +632,10 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
               onTimeUpdate={handleTimeUpdate}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
+              onError={(e) => {
+                console.warn('[DriaClip] Native video element load state:', e);
+                setIsPlaying(false);
+              }}
               onEnded={() => {
                 setIsPlaying(false);
                 if (videoRef.current) {
@@ -612,10 +647,7 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
               preload="metadata"
               muted={isMuted}
               style={{
-                objectPosition: 'center center',
-                transform: isVertical && (clip.verticalStyle === 'center-crop' || !clip.verticalStyle)
-                  ? `scale(${1.0 - ((clip.zoomOutPercent ?? 20) / 100) * 0.40})`
-                  : undefined,
+                objectPosition: `${clip.cropPositionX ?? 50}% center`,
               }}
               className={`w-full h-full cursor-pointer relative z-10 transition-transform ${
                 isVertical
@@ -709,9 +741,9 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
           </span>
 
           <div className="flex items-center gap-1">
-            {clip.aspectRatio === '9:16' && (clip.verticalStyle === 'center-crop' || !clip.verticalStyle) && (
+            {clip.aspectRatio === '9:16' && (
               <span className="rounded-full bg-violet-600/90 backdrop-blur-md px-2 py-0.5 text-[9px] font-mono font-bold text-white border border-violet-400/30 shadow-xs flex items-center gap-1">
-                <span>Zoom-Out {clip.zoomOutPercent ?? 20}%</span>
+                <span>9:16 Otomatis</span>
               </span>
             )}
             <span className="rounded-full bg-slate-900/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
@@ -747,6 +779,47 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
           </div>
         </div>
 
+        {/* Quick Frame Positioning Buttons — Only on Clip Results Before Download */}
+        {clip.aspectRatio === '9:16' && (clip.verticalStyle === 'center-crop' || !clip.verticalStyle) && (
+          <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs">
+            <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+              <MoveHorizontal className="h-3 w-3 text-violet-500" />
+              <span className="text-[10px] font-semibold">{isId ? 'Geser Frame:' : 'Frame:'}</span>
+              <span className="font-mono text-[10px] text-violet-600 dark:text-violet-400 font-bold">{clip.cropPositionX ?? 50}%</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onUpdateClipCrop?.(clip.id, Math.max(0, (clip.cropPositionX ?? 50) - 15))}
+                className="p-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-violet-600 hover:text-white text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                title={isId ? 'Geser 15% ke Kiri' : 'Nudge 15% Left'}
+              >
+                <ChevronLeft className="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateClipCrop?.(clip.id, 50)}
+                className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition-colors cursor-pointer ${
+                  (clip.cropPositionX ?? 50) === 50
+                    ? 'bg-violet-600 text-white'
+                    : 'bg-slate-200 dark:bg-slate-800 hover:bg-violet-600 hover:text-white text-slate-700 dark:text-slate-300'
+                }`}
+                title={isId ? 'Pusatkan Frame (50%)' : 'Center Frame (50%)'}
+              >
+                {isId ? 'Tengah' : 'Center'}
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateClipCrop?.(clip.id, Math.min(100, (clip.cropPositionX ?? 50) + 15))}
+                className="p-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-violet-600 hover:text-white text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                title={isId ? 'Geser 15% ke Kanan' : 'Nudge 15% Right'}
+              >
+                <ChevronRight className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
@@ -756,16 +829,16 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
             {clip.aspectRatio === '9:16' && (clip.verticalStyle === 'center-crop' || !clip.verticalStyle) && (
               <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/70 border border-violet-200 dark:border-violet-800/60 px-1.5 py-0.5 rounded">
                 <Sparkles className="h-2.5 w-2.5 text-violet-500" />
-                <span>{isId ? 'Crop Tengah (Zoom-Out)' : 'Center Crop (Zoom-Out)'}</span>
+                <span>{isId ? 'Otomatis 9:16' : 'Auto 9:16'}</span>
               </span>
             )}
           </div>
 
           <div className="flex items-center gap-1.5">
             {/* If YouTube, provide direct link to timestamp */}
-            {isYouTube && source?.youtubeId && (
+            {isYouTube && effectiveYoutubeId && (
               <a
-                href={`https://www.youtube.com/watch?v=${source.youtubeId}&t=${Math.round(clip.startTime)}s`}
+                href={`https://www.youtube.com/watch?v=${effectiveYoutubeId}&t=${Math.round(clip.startTime)}s`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 rounded-lg border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
@@ -828,7 +901,6 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
   onUpdateClipCrop,
   onSelectSampleVideo,
   lang,
-  onOpenYouTubeCookiesModal,
   onAttachVideoFile,
 }) => {
   const t = TRANSLATIONS[lang];
@@ -903,7 +975,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
           duration: clip.duration,
         });
 
-        // Try high-speed server FFmpeg rendering first (supports chunked upload for any file size)
+        // Try high-speed server FFmpeg rendering first (supports local file & samples)
         if (source.file) {
           try {
             const serverLocalResult = await downloadServerRenderedLocalClip(clip, source.file);
@@ -913,6 +985,16 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
             return;
           } catch (serverLocalErr) {
             console.warn('Server local render notice, falling back to browser slice:', serverLocalErr);
+          }
+        } else if (source.url && (source.url.startsWith('/samples/') || source.url.includes('/samples/'))) {
+          try {
+            const serverResult = await downloadServerRenderedClip(clip, source.url);
+            clip.videoBlobUrl = serverResult.url;
+            clip.videoExtension = 'mp4';
+            downloadClipAsMp4(clip, undefined, 'mp4');
+            return;
+          } catch (serverSampleErr) {
+            console.warn('Server sample render notice, falling back to browser canvas slice:', serverSampleErr);
           }
         }
 
@@ -930,7 +1012,9 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
           clip.trackingKeyframes,
           clip.zoomOutPercent ?? 20,
           clip.watermark !== false,
-          clip.watermarkPosition || 'safe-top-left'
+          clip.watermarkPosition || 'safe-top-left',
+          clip.watermarkText || 'DriaClip',
+          clip.watermarkStyle || 'neon-glow'
         );
 
         clip.videoBlobUrl = result.url;
@@ -1035,7 +1119,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
 
   return (
     <div id="clips-dashboard" className="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#0f172a]/95 p-4 sm:p-7 shadow-lg backdrop-blur-md space-y-6 transition-colors w-full">
-      {/* Header - clean without step badge or dummy counts */}
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 dark:border-slate-800/80 pb-4">
         <div>
           <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -1099,33 +1183,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
               {isId ? 'Pilih Solusi Terbaik (1-Klik Tanpa Gangguan):' : 'Recommended 1-Click Solutions:'}
             </span>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-              {/* Option 1: YouTube Cookies Setup (Direct Fix) */}
-              <button
-                type="button"
-                onClick={() => {
-                  setDownloadError(null);
-                  if (onOpenYouTubeCookiesModal) {
-                    onOpenYouTubeCookiesModal();
-                  }
-                }}
-                className="p-3 rounded-xl border border-amber-300 dark:border-amber-800/80 bg-white dark:bg-amber-950/20 hover:border-amber-500 text-left cursor-pointer transition-all flex flex-col justify-between group shadow-xs"
-              >
-                <div>
-                  <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-bold text-xs">
-                    <Cookie className="h-4 w-4" />
-                    <span>{isId ? 'Solusi 1: Pasang Cookie YouTube' : 'Solution 1: Setup YouTube Cookie'}</span>
-                  </div>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-normal">
-                    {isId 
-                      ? 'Tempelkan cookie akun YouTube (format Netscape). Server cloud langsung bebas blokir bot & unduh klip lancar.' 
-                      : 'Provide YouTube cookies (Netscape format) to permanently bypass server bot checks.'}
-                  </p>
-                </div>
-                <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 group-hover:underline">
-                  {isId ? 'Buka Pengaturan Cookie →' : 'Open Cookie Settings →'}
-                </span>
-              </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
 
               {/* Option 2: Upload Own MP4/WebM Video File */}
               <a
@@ -1247,28 +1305,36 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
         </div>
       )}
 
-      {/* Grid of Generated Clips (with active video players!) */}
+      {/* Grid of Generated Clips (with active video players and Google AdSense Slots after every card) */}
       {clips.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {clips.map((clip, idx) => (
-            <ClipCardItem
-              key={clip.id}
-              clip={clip}
-              index={idx}
-              source={source}
-              onPreviewClip={onPreviewClip}
-              onFineTuneClip={onFineTuneClip}
-              onDownloadSingle={handleDownloadSingle}
-              onCopyHook={handleCopyHook}
-              onUpdateClipCrop={onUpdateClipCrop}
-              isCopied={copiedId === clip.id}
-              isRendering={renderingClip?.id === clip.id}
-              renderingPercent={renderingClip?.id === clip.id ? (renderingClip?.progress ?? 0) : 0}
-              isId={isId}
-              t={t}
-              activePlayingId={activePlayingClipId}
-              onSetActivePlayingId={setActivePlayingClipId}
-            />
+            <React.Fragment key={clip.id}>
+              <ClipCardItem
+                clip={clip}
+                index={idx}
+                source={source}
+                onPreviewClip={onPreviewClip}
+                onFineTuneClip={onFineTuneClip}
+                onDownloadSingle={handleDownloadSingle}
+                onCopyHook={handleCopyHook}
+                onUpdateClipCrop={onUpdateClipCrop}
+                isCopied={copiedId === clip.id}
+                isRendering={renderingClip?.id === clip.id}
+                renderingPercent={renderingClip?.id === clip.id ? (renderingClip?.progress ?? 0) : 0}
+                isId={isId}
+                t={t}
+                activePlayingId={activePlayingClipId}
+                onSetActivePlayingId={setActivePlayingClipId}
+              />
+
+              {/* Google AdSense In-Feed Slot After Card for clip.driacom.com */}
+              <AdSenseSlot
+                slotId={`38492019${idx + 1}`}
+                label={isId ? `Iklan Google AdSense • Slot #${idx + 1}` : `Google AdSense • Slot #${idx + 1}`}
+                className="h-full min-h-[340px]"
+              />
+            </React.Fragment>
           ))}
         </div>
       )}

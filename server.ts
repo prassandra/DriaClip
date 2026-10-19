@@ -65,7 +65,9 @@ app.post('/api/render-local-clip', (req, res) => {
         quality: (req.query.quality as any) || '720p',
         title: (req.query.title as string) || 'clip',
         watermark: req.query.watermark !== 'false',
+        watermarkText: (req.query.watermarkText as string) || 'DriaClip',
         watermarkPosition: (req.query.watermarkPosition as any) || 'safe-top-left',
+        watermarkStyle: (req.query.watermarkStyle as any) || 'neon-glow',
       });
 
       res.download(filePath, fileName, () => {

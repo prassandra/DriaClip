@@ -1,17 +1,106 @@
-# robots.txt for DriaClip by Driacom (https://driaclip.driacom.com)
+# robots.txt for DriaClip by DriaCom (https://clip.driacom.com)
+# Clip Video Secara Gratis Cocok untuk para Clipper
+# Allows all search engine crawlers, answer engine crawlers, and AI bots to index the application.
+
 User-agent: *
 Allow: /
+Allow: /#workspace
+Allow: /#clips-dashboard
+Allow: /#guide
+Allow: /#faq
 Allow: /about
 Allow: /contact
 Allow: /privacy
 Allow: /disclaimer
 
-# Crawl-delay for polite indexation
+# Google Search & AdSense Bots
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Googlebot-Video
+Allow: /
+
+User-agent: Mediapartners-Google
+Allow: /
+
+User-agent: AdsBot-Google
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# Microsoft Bing Search & Copilot
+User-agent: Bingbot
+Allow: /
+
+User-agent: msnbot
+Allow: /
+
+User-agent: BingPreview
+Allow: /
+
+# OpenAI & ChatGPT Search / Answer Engine
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# Anthropic Claude AI Bot
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+# Perplexity AI Answer Engine
+User-agent: PerplexityBot
+Allow: /
+
+# Apple Search & Siri Intelligence Bot
+User-agent: Applebot
+Allow: /
+
+# Other Major Global Search Engines
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+User-agent: Yandex
+Allow: /
+
+User-agent: YandexBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: Diffbot
+Allow: /
+
+User-agent: FacebookBot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+# Polite crawling parameter
 Crawl-delay: 1
 
-# Disallow transient processing artifacts or internal paths
+# Disallow transient temporary processing endpoints
 Disallow: /api/internal/
 Disallow: /tmp/
 
-# High-priority XML Sitemaps
-Sitemap: https://driaclip.driacom.com/sitemap.xml
+# Official XML Sitemap for clip.driacom.com
+Sitemap: https://clip.driacom.com/sitemap.xml

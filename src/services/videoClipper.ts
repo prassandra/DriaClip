@@ -1,30 +1,28 @@
-import { AspectRatio, VerticalStyle, GeneratedClip, ExportQuality, TrackingKeyframe } from '../types/driaclip';
+import { AspectRatio, VerticalStyle, GeneratedClip, ExportQuality, TrackingKeyframe, WatermarkPosition, WatermarkStyle } from '../types/driaclip';
 
 /**
- * Draws a distinct, tamper-resistant DriaClip watermark badge onto a canvas frame.
- * Positioned in the anti-crop vertical safe zone:
- * - Upper-Left Safe Zone (default): sits below top status bar/search (y > 70px),
- *   completely out of the way of right-side interaction buttons (Like/Comment/Share)
- *   and bottom subtitles/captions.
- * - Prevents crop-theft: any attempt to crop the top-left will chop off the speaker's face.
+ * Draws a distinct, tamper-resistant customized watermark badge onto a canvas frame.
+ * Positioned in the anti-crop vertical safe zone with support for custom visitor text and styles.
  */
 export function drawDriaClipWatermark(
   ctx: CanvasRenderingContext2D,
   targetW: number,
   targetH: number,
   aspectRatio: AspectRatio = '9:16',
-  position: 'safe-top-left' | 'safe-top-right' | 'center-top' = 'safe-top-left'
+  position: WatermarkPosition = 'safe-top-left',
+  customText: string = 'DriaClip',
+  style: WatermarkStyle = 'neon-glow'
 ): void {
   ctx.save();
 
-  const fontSize = Math.max(15, Math.round(targetW * 0.033));
-  ctx.font = `bold ${fontSize}px "Plus Jakarta Sans", system-ui, -apple-system, sans-serif`;
+  const displayText = (customText || 'DriaClip').trim().slice(0, 35) || 'DriaClip';
+  const fontSize = Math.max(14, Math.round(targetW * 0.032));
+  ctx.font = `600 ${fontSize}px "Plus Jakarta Sans", system-ui, -apple-system, sans-serif`;
 
-  const brandText = 'DriaClip';
-  const textMetrics = ctx.measureText(brandText);
+  const textMetrics = ctx.measureText(displayText);
   const textW = textMetrics.width;
 
-  const pillPadX = Math.round(fontSize * 0.85);
+  const pillPadX = Math.round(fontSize * 0.9);
   const pillPadY = Math.round(fontSize * 0.45);
   const dotRadius = Math.max(3, Math.round(fontSize * 0.22));
   const dotSpacing = Math.round(fontSize * 0.52);
@@ -38,6 +36,7 @@ export function drawDriaClipWatermark(
 
   if (aspectRatio === '9:16') {
     const safeTop = Math.round(targetH * 0.068);
+    const safeBottom = Math.round(targetH * 0.82);
     const safeMarginX = Math.round(targetW * 0.05);
 
     if (position === 'safe-top-right') {
@@ -46,8 +45,13 @@ export function drawDriaClipWatermark(
     } else if (position === 'center-top') {
       badgeX = Math.round((targetW - badgeW) / 2);
       badgeY = Math.round(targetH * 0.062);
+    } else if (position === 'safe-bottom-left') {
+      badgeX = safeMarginX;
+      badgeY = safeBottom;
+    } else if (position === 'safe-bottom-right') {
+      badgeX = targetW - badgeW - safeMarginX;
+      badgeY = safeBottom;
     } else {
-      // safe-top-left (Default & Best anti-crop protection)
       badgeX = safeMarginX;
       badgeY = safeTop;
     }
@@ -59,6 +63,12 @@ export function drawDriaClipWatermark(
     } else if (position === 'center-top') {
       badgeX = Math.round((targetW - badgeW) / 2);
       badgeY = margin;
+    } else if (position === 'safe-bottom-left') {
+      badgeX = margin;
+      badgeY = targetH - badgeH - margin;
+    } else if (position === 'safe-bottom-right') {
+      badgeX = targetW - badgeW - margin;
+      badgeY = targetH - badgeH - margin;
     } else {
       badgeX = margin;
       badgeY = margin;
@@ -73,81 +83,123 @@ export function drawDriaClipWatermark(
     } else if (position === 'center-top') {
       badgeX = Math.round((targetW - badgeW) / 2);
       badgeY = marginY;
+    } else if (position === 'safe-bottom-left') {
+      badgeX = marginX;
+      badgeY = targetH - badgeH - marginY;
+    } else if (position === 'safe-bottom-right') {
+      badgeX = targetW - badgeW - marginX;
+      badgeY = targetH - badgeH - marginY;
     } else {
       badgeX = marginX;
       badgeY = marginY;
     }
   }
 
-  // 1. Drop shadow for badge
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+  // 1. Semi-transparent backdrop with crisp shadow
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
   ctx.shadowBlur = 8;
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 2;
 
-  // 2. Pill background
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
-  ctx.beginPath();
-  ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeRadius);
-  ctx.fill();
+  let cornerColor = '#a855f7'; // violet default
+  let glyphColor = '#c084fc';
+  let bgColor = 'rgba(10, 10, 15, 0.78)';
 
-  // 3. Subtle purple glowing border
-  ctx.shadowColor = 'rgba(168, 85, 247, 0.45)';
-  ctx.shadowBlur = 5;
-  ctx.strokeStyle = 'rgba(168, 85, 247, 0.75)';
-  ctx.lineWidth = Math.max(1, Math.round(fontSize * 0.065));
+  if (style === 'glass-blur') {
+    cornerColor = '#38bdf8';
+    glyphColor = '#7dd3fc';
+    bgColor = 'rgba(15, 23, 42, 0.70)';
+  } else if (style === 'gradient-accent') {
+    cornerColor = '#f59e0b';
+    glyphColor = '#fbbf24';
+    bgColor = 'rgba(30, 27, 75, 0.78)';
+  } else if (style === 'minimal-dark') {
+    cornerColor = '#94a3b8';
+    glyphColor = '#cbd5e1';
+    bgColor = 'rgba(10, 10, 15, 0.85)';
+  }
+
+  // Draw container background
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+
+  // 2. Draw 4 Corner Accent Lines ("garis sudut" framing - zero animation, distinct modern look)
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = cornerColor;
+  ctx.lineWidth = Math.max(1.8, Math.round(fontSize * 0.12));
+  const cornerLen = Math.max(6, Math.round(fontSize * 0.45));
+
+  // Top-Left corner
+  ctx.beginPath();
+  ctx.moveTo(badgeX, badgeY + cornerLen);
+  ctx.lineTo(badgeX, badgeY);
+  ctx.lineTo(badgeX + cornerLen, badgeY);
   ctx.stroke();
 
-  // 4. Dot indicator
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-  ctx.shadowBlur = 3;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 1;
-
-  const dotCenterX = badgeX + pillPadX + dotRadius;
-  const dotCenterY = badgeY + badgeH / 2;
-
-  ctx.fillStyle = '#c084fc'; // Violet-400
+  // Top-Right corner
   ctx.beginPath();
-  ctx.arc(dotCenterX, dotCenterY, dotRadius, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(badgeX + badgeW - cornerLen, badgeY);
+  ctx.lineTo(badgeX + badgeW, badgeY);
+  ctx.lineTo(badgeX + badgeW, badgeY + cornerLen);
+  ctx.stroke();
 
-  ctx.fillStyle = '#ffffff';
+  // Bottom-Left corner
   ctx.beginPath();
-  ctx.arc(dotCenterX, dotCenterY, dotRadius * 0.45, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(badgeX, badgeY + badgeH - cornerLen);
+  ctx.lineTo(badgeX, badgeY + badgeH);
+  ctx.lineTo(badgeX + cornerLen, badgeY + badgeH);
+  ctx.stroke();
 
-  // 5. White brand text
-  ctx.fillStyle = '#f8fafc';
+  // Bottom-Right corner
+  ctx.beginPath();
+  ctx.moveTo(badgeX + badgeW - cornerLen, badgeY + badgeH);
+  ctx.lineTo(badgeX + badgeW, badgeY + badgeH);
+  ctx.lineTo(badgeX + badgeW, badgeY + badgeH - cornerLen);
+  ctx.stroke();
+
+  // 3. Static Star Glyph (✦)
+  ctx.fillStyle = glyphColor;
+  ctx.font = `bold ${Math.round(fontSize * 0.85)}px system-ui, sans-serif`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  const textX = dotCenterX + dotRadius + dotSpacing;
-  const textY = badgeY + badgeH / 2 + 0.5;
-  ctx.fillText(brandText, textX, textY);
+  const glyphX = badgeX + pillPadX * 0.7;
+  const centerY = badgeY + badgeH / 2;
+  ctx.fillText('✦', glyphX, centerY);
+
+  // 4. Clean Monospace Watermark Text
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = `bold ${fontSize}px "JetBrains Mono", monospace, system-ui`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const textX = glyphX + fontSize * 0.9;
+  ctx.fillText(displayText.toUpperCase(), textX, centerY);
 
   ctx.restore();
 }
 
 /**
- * Pre-renders the DriaClip watermark badge once onto an offscreen canvas
+ * Pre-renders the custom watermark badge once onto an offscreen canvas
  * so per-frame drawing during video recording takes < 0.05ms (zero CPU stutter).
  */
 export function createWatermarkOffscreenCanvas(
   targetW: number,
   targetH: number,
   aspectRatio: AspectRatio = '9:16',
-  position: 'safe-top-left' | 'safe-top-right' | 'center-top' = 'safe-top-left'
+  position: WatermarkPosition = 'safe-top-left',
+  customText: string = 'DriaClip',
+  style: WatermarkStyle = 'neon-glow'
 ): { canvas: HTMLCanvasElement; x: number; y: number } {
-  const fontSize = Math.max(15, Math.round(targetW * 0.033));
-  const brandText = 'DriaClip';
+  const displayText = (customText || 'DriaClip').trim().slice(0, 35) || 'DriaClip';
+  const fontSize = Math.max(14, Math.round(targetW * 0.032));
 
   // Measure text
   const tempCanvas = document.createElement('canvas');
   const tempCtx = tempCanvas.getContext('2d')!;
-  tempCtx.font = `bold ${fontSize}px "Plus Jakarta Sans", system-ui, -apple-system, sans-serif`;
-  const textW = tempCtx.measureText(brandText).width;
+  tempCtx.font = `600 ${fontSize}px "Plus Jakarta Sans", system-ui, -apple-system, sans-serif`;
+  const textW = tempCtx.measureText(displayText).width;
 
-  const pillPadX = Math.round(fontSize * 0.85);
+  const pillPadX = Math.round(fontSize * 0.9);
   const pillPadY = Math.round(fontSize * 0.45);
   const dotRadius = Math.max(3, Math.round(fontSize * 0.22));
   const dotSpacing = Math.round(fontSize * 0.52);
@@ -161,6 +213,7 @@ export function createWatermarkOffscreenCanvas(
 
   if (aspectRatio === '9:16') {
     const safeTop = Math.round(targetH * 0.068);
+    const safeBottom = Math.round(targetH * 0.82);
     const safeMarginX = Math.round(targetW * 0.05);
 
     if (position === 'safe-top-right') {
@@ -169,6 +222,12 @@ export function createWatermarkOffscreenCanvas(
     } else if (position === 'center-top') {
       badgeX = Math.round((targetW - badgeW) / 2);
       badgeY = Math.round(targetH * 0.062);
+    } else if (position === 'safe-bottom-left') {
+      badgeX = safeMarginX;
+      badgeY = safeBottom;
+    } else if (position === 'safe-bottom-right') {
+      badgeX = targetW - badgeW - safeMarginX;
+      badgeY = safeBottom;
     } else {
       badgeX = safeMarginX;
       badgeY = safeTop;
@@ -181,6 +240,12 @@ export function createWatermarkOffscreenCanvas(
     } else if (position === 'center-top') {
       badgeX = Math.round((targetW - badgeW) / 2);
       badgeY = margin;
+    } else if (position === 'safe-bottom-left') {
+      badgeX = margin;
+      badgeY = targetH - badgeH - margin;
+    } else if (position === 'safe-bottom-right') {
+      badgeX = targetW - badgeW - margin;
+      badgeY = targetH - badgeH - margin;
     } else {
       badgeX = margin;
       badgeY = margin;
@@ -194,6 +259,12 @@ export function createWatermarkOffscreenCanvas(
     } else if (position === 'center-top') {
       badgeX = Math.round((targetW - badgeW) / 2);
       badgeY = marginY;
+    } else if (position === 'safe-bottom-left') {
+      badgeX = marginX;
+      badgeY = targetH - badgeH - marginY;
+    } else if (position === 'safe-bottom-right') {
+      badgeX = targetW - badgeW - marginX;
+      badgeY = targetH - badgeH - marginY;
     } else {
       badgeX = marginX;
       badgeY = marginY;
@@ -201,64 +272,83 @@ export function createWatermarkOffscreenCanvas(
   }
 
   const offscreen = document.createElement('canvas');
-  offscreen.width = Math.ceil(badgeW) + 16;
-  offscreen.height = Math.ceil(badgeH) + 16;
+  offscreen.width = Math.ceil(badgeW) + 20;
+  offscreen.height = Math.ceil(badgeH) + 20;
   const octx = offscreen.getContext('2d')!;
 
+  const bx = 6;
+  const by = 6;
+
   octx.save();
-  // Drop shadow
-  octx.shadowColor = 'rgba(0, 0, 0, 0.65)';
-  octx.shadowBlur = 8;
-  octx.shadowOffsetX = 0;
-  octx.shadowOffsetY = 2;
 
-  // Pill background
-  octx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  // 1. Clean translucent background
+  octx.fillStyle = style === 'glass-blur'
+    ? 'rgba(15, 23, 42, 0.60)'
+    : style === 'minimal-dark'
+    ? 'rgba(10, 10, 15, 0.75)'
+    : style === 'gradient-accent'
+    ? 'rgba(30, 15, 50, 0.70)'
+    : 'rgba(5, 5, 10, 0.65)';
+  octx.fillRect(bx, by, badgeW, badgeH);
+
+  // 2. 4 Framing Corner Lines (Garis Sudut HUD - Tidak Kotak Biasa & Tanpa Animasi Berat)
+  let cornerColor = '#a855f7';
+  if (style === 'glass-blur') cornerColor = '#38bdf8';
+  else if (style === 'minimal-dark') cornerColor = '#e2e8f0';
+  else if (style === 'gradient-accent') cornerColor = '#fbbf24';
+
+  const cornerLen = Math.max(5, Math.round(fontSize * 0.45));
+  const cornerWidth = Math.max(1.8, Math.round(fontSize * 0.12));
+
+  octx.strokeStyle = cornerColor;
+  octx.lineWidth = cornerWidth;
+  octx.lineCap = 'square';
+  octx.lineJoin = 'miter';
+
   octx.beginPath();
-  if (typeof (octx as any).roundRect === 'function') {
-    (octx as any).roundRect(4, 4, badgeW, badgeH, badgeRadius);
-  } else {
-    octx.rect(4, 4, badgeW, badgeH);
-  }
-  octx.fill();
+  // Top-Left corner
+  octx.moveTo(bx, by + cornerLen);
+  octx.lineTo(bx, by);
+  octx.lineTo(bx + cornerLen, by);
 
-  // Subtle violet glowing border
-  octx.shadowColor = 'rgba(168, 85, 247, 0.45)';
-  octx.shadowBlur = 5;
-  octx.strokeStyle = 'rgba(168, 85, 247, 0.75)';
-  octx.lineWidth = Math.max(1, Math.round(fontSize * 0.065));
+  // Top-Right corner
+  octx.moveTo(bx + badgeW - cornerLen, by);
+  octx.lineTo(bx + badgeW, by);
+  octx.lineTo(bx + badgeW, by + cornerLen);
+
+  // Bottom-Left corner
+  octx.moveTo(bx, by + badgeH - cornerLen);
+  octx.lineTo(bx, by + badgeH);
+  octx.lineTo(bx + cornerLen, by + badgeH);
+
+  // Bottom-Right corner
+  octx.moveTo(bx + badgeW - cornerLen, by + badgeH);
+  octx.lineTo(bx + badgeW, by + badgeH);
+  octx.lineTo(bx + badgeW, by + badgeH - cornerLen);
   octx.stroke();
 
-  // Dot indicator
-  octx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-  octx.shadowBlur = 3;
-  octx.shadowOffsetX = 0;
-  octx.shadowOffsetY = 1;
+  // 3. Static Star Glyph (✦)
+  octx.font = `600 ${Math.round(fontSize * 0.85)}px monospace`;
+  octx.fillStyle = cornerColor;
+  octx.textAlign = 'left';
+  octx.textBaseline = 'middle';
+  const glyphX = bx + pillPadX * 0.8;
+  const glyphY = by + badgeH / 2;
+  octx.fillText('✦', glyphX, glyphY);
 
-  const dotCenterX = 4 + pillPadX + dotRadius;
-  const dotCenterY = 4 + badgeH / 2;
-
-  octx.fillStyle = '#c084fc';
-  octx.beginPath();
-  octx.arc(dotCenterX, dotCenterY, dotRadius, 0, Math.PI * 2);
-  octx.fill();
-
-  octx.fillStyle = '#ffffff';
-  octx.beginPath();
-  octx.arc(dotCenterX, dotCenterY, dotRadius * 0.45, 0, Math.PI * 2);
-  octx.fill();
-
-  // White text
+  // 4. Clean High-Contrast Typography
   octx.font = `bold ${fontSize}px "Plus Jakarta Sans", system-ui, -apple-system, sans-serif`;
   octx.fillStyle = '#f8fafc';
   octx.textAlign = 'left';
   octx.textBaseline = 'middle';
-  const textX = dotCenterX + dotRadius + dotSpacing;
-  const textY = 4 + badgeH / 2 + 0.5;
-  octx.fillText(brandText, textX, textY);
+  octx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+  octx.shadowBlur = 3;
+  const textX = glyphX + fontSize * 0.9;
+  const textY = by + badgeH / 2;
+  octx.fillText(displayText.toUpperCase(), textX, textY);
   octx.restore();
 
-  return { canvas: offscreen, x: badgeX - 4, y: badgeY - 4 };
+  return { canvas: offscreen, x: badgeX - 6, y: badgeY - 6 };
 }
 
 /**
@@ -484,26 +574,13 @@ export async function captureVideoThumbnail(
                 const fgH = img.naturalHeight * fitScale;
                 ctx.drawImage(img, 0, (height - fgH) / 2, width, fgH);
               } else {
-                // center-crop (or non-blur) with comfortable Zoom-Out
-                const zoomFactor = Math.max(0.05, Math.min(0.45, (zoomOutPercent ?? 20) / 100));
-                const tightScale = height / img.naturalHeight;
-                const fitScale = width / img.naturalWidth;
-                const scale = tightScale - (tightScale - fitScale) * zoomFactor * 1.8;
+                // Direct automatic 9:16 center-crop with manual pan (cropPositionX)
+                const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
                 const fgW = img.naturalWidth * scale;
                 const fgH = img.naturalHeight * scale;
-                const fgX = (width - fgW) / 2;
+                const panRatio = Math.max(0, Math.min(100, cropPositionX ?? 50)) / 100;
+                const fgX = (width - fgW) * panRatio;
                 const fgY = (height - fgH) / 2;
-
-                // Soft background blur
-                ctx.save();
-                ctx.filter = 'blur(18px) brightness(0.60)';
-                const bgScale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
-                const bgW = img.naturalWidth * bgScale;
-                const bgH = img.naturalHeight * bgScale;
-                ctx.drawImage(img, (width - bgW) / 2, (height - bgH) / 2, bgW, bgH);
-                ctx.restore();
-
-                // Centered sharp zoomed-out foreground
                 ctx.drawImage(img, fgX, fgY, fgW, fgH);
               }
             } else if (aspectRatio === '1:1') {
@@ -700,25 +777,14 @@ export async function captureVideoThumbnail(
             const fgH = vh * fitScale;
             ctx.drawImage(video, 0, (height - fgH) / 2, width, fgH);
           } else {
-            // center-crop with comfortable Zoom-Out
-            const zoomFactor = Math.max(0.05, Math.min(0.45, (zoomOutPercent ?? 20) / 100));
-            const tightScale = height / vh;
-            const fitScale = width / vw;
-            const scale = tightScale - (tightScale - fitScale) * zoomFactor * 1.8;
+            // Direct automatic 9:16 vertical crop with manual pan (cropPositionX)
+            const scale = Math.max(width / vw, height / vh);
             const fgW = vw * scale;
             const fgH = vh * scale;
-            const fgX = (width - fgW) / 2;
+            const panRatio = Math.max(0, Math.min(100, cropPositionX ?? 50)) / 100;
+            const fgX = (width - fgW) * panRatio;
             const fgY = (height - fgH) / 2;
-
-            ctx.save();
-            ctx.filter = 'blur(18px) brightness(0.60)';
-            const bgScale = Math.max(width / vw, height / vh);
-            const bgW = vw * bgScale;
-            const bgH = vh * bgScale;
-            ctx.drawImage(video, (width - bgW) / 2, (height - bgH) / 2, bgW, bgH);
-            ctx.restore();
-
-            ctx.drawImage(video, fgX, fgY, fgW, fgH);
+            ctx.drawImage(video, 0, 0, vw, vh, fgX, fgY, fgW, fgH);
           }
         } else if (aspectRatio === '1:1') {
           const minDim = Math.min(vw, vh);
@@ -883,7 +949,9 @@ export async function renderClipBlob(
   trackingKeyframes?: TrackingKeyframe[],
   zoomOutPercent: number = 20,
   watermark: boolean = true,
-  watermarkPosition: 'safe-top-left' | 'safe-top-right' | 'center-top' = 'safe-top-left'
+  watermarkPosition: WatermarkPosition = 'safe-top-left',
+  watermarkText: string = 'DriaClip',
+  watermarkStyle: WatermarkStyle = 'neon-glow'
 ): Promise<{ blob: Blob; url: string; size: number; extension: 'mp4' | 'webm' }> {
   return new Promise(async (resolve, reject) => {
     if (!videoUrl || videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
@@ -904,7 +972,8 @@ export async function renderClipBlob(
     video.style.pointerEvents = 'none';
     document.body.appendChild(video);
 
-    if (!videoUrl.startsWith('blob:') && !videoUrl.startsWith('data:')) {
+    const isSameOrigin = videoUrl.startsWith('/') || (typeof window !== 'undefined' && videoUrl.startsWith(window.location.origin));
+    if (!videoUrl.startsWith('blob:') && !videoUrl.startsWith('data:') && !isSameOrigin) {
       video.crossOrigin = 'anonymous';
     }
     video.src = videoUrl;
@@ -913,9 +982,7 @@ export async function renderClipBlob(
     video.setAttribute('playsinline', '');
     video.setAttribute('webkit-playsinline', '');
 
-    // CRITICAL: video must NOT be muted! If video.muted is true, Web Audio produces silence!
-    // We isolate audio through AudioContext MediaStreamDestination so NO sound plays through physical speakers,
-    // while the recorded video receives full, crystal-clear stereo audio.
+    // Attempt crystal-clear Web Audio capture
     video.muted = false;
     video.defaultMuted = false;
     video.volume = 1.0;
@@ -954,19 +1021,51 @@ export async function renderClipBlob(
     // Pre-cache watermark badge offscreen so per-frame drawing takes < 0.05ms (zero CPU stutter)
     let wmInfo: { canvas: HTMLCanvasElement; x: number; y: number } | null = null;
     if (watermark) {
-      wmInfo = createWatermarkOffscreenCanvas(targetW, targetH, aspectRatio, watermarkPosition);
+      wmInfo = createWatermarkOffscreenCanvas(targetW, targetH, aspectRatio, watermarkPosition, watermarkText, watermarkStyle);
     }
 
     try {
-      // Step 1: Wait for video metadata
+      // Step 1: Wait for video metadata with resilient CORS and timeout fallback
       await new Promise<void>((res, rej) => {
         if (video.readyState >= 1) return res();
-        video.onloadedmetadata = () => res();
-        video.onerror = () => {
-          if (video.parentNode) video.parentNode.removeChild(video);
-          rej(new Error('Gagal memuat sumber video'));
+
+        let retriedWithoutCors = false;
+        let timer: any = null;
+
+        const onLoaded = () => {
+          cleanup();
+          res();
         };
-        setTimeout(res, 3000);
+
+        const onError = () => {
+          if (video.crossOrigin && !retriedWithoutCors) {
+            console.warn('[DriaClip] Retrying video load without crossOrigin...');
+            retriedWithoutCors = true;
+            video.removeAttribute('crossorigin');
+            video.src = videoUrl;
+            video.load();
+            return;
+          }
+          cleanup();
+          if (video.parentNode) video.parentNode.removeChild(video);
+          rej(new Error('Gagal memuat sumber video. Pastikan format video didukung oleh peramban.'));
+        };
+
+        const cleanup = () => {
+          video.removeEventListener('loadedmetadata', onLoaded);
+          video.removeEventListener('canplay', onLoaded);
+          video.removeEventListener('error', onError);
+          if (timer) clearTimeout(timer);
+        };
+
+        video.addEventListener('loadedmetadata', onLoaded, { once: true });
+        video.addEventListener('canplay', onLoaded, { once: true });
+        video.addEventListener('error', onError);
+
+        timer = setTimeout(() => {
+          cleanup();
+          res();
+        }, 4000);
       });
 
       // Step 2: Prepare canvas stream (30fps)
@@ -1053,7 +1152,7 @@ export async function renderClipBlob(
         setTimeout(res, 800);
       });
 
-      // Step 6: Start playback safely with unmuted stream
+      // Step 6: Start playback safely with unmuted stream (fallback to muted if browser autoplay blocks)
       try {
         if (audioCtx && audioCtx.state === 'suspended') {
           await audioCtx.resume();
@@ -1062,10 +1161,11 @@ export async function renderClipBlob(
       } catch (playErr) {
         console.warn('Playback resume retry:', playErr);
         try {
-          if (audioCtx) await audioCtx.resume();
+          video.muted = true;
+          if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
           await video.play();
         } catch (e) {
-          console.warn('Playback warning:', e);
+          console.warn('Playback fallback notice:', e);
         }
       }
 
@@ -1145,7 +1245,7 @@ export async function renderClipBlob(
         frameCounter++;
         const vw = video.videoWidth || 1280;
         const vh = video.videoHeight || 720;
-        const currentEffectiveCropX = 50;
+        const currentEffectiveCropX = Math.max(0, Math.min(100, Number(cropPositionX ?? 50)));
 
         if (aspectRatio === '9:16') {
           if (verticalStyle === 'blur-background') {
@@ -1171,31 +1271,23 @@ export async function renderClipBlob(
             const fgY = (targetH - fgH) / 2;
             ctx.drawImage(video, 0, fgY, targetW, fgH);
           } else {
-            // center-crop with comfortable Zoom-Out
-            const zoomFactor = Math.max(0.05, Math.min(0.45, (zoomOutPercent ?? 20) / 100));
-            const tightScale = targetH / vh;
-            const fitScale = targetW / vw;
-            const scale = tightScale - (tightScale - fitScale) * zoomFactor * 1.8;
+            // Direct automatic 9:16 vertical crop with manual frame shift (cropPositionX)
+            const scale = Math.max(targetW / vw, targetH / vh);
             const fgW = vw * scale;
             const fgH = vh * scale;
-            const fgX = (targetW - fgW) / 2;
-            const fgY = (targetH - fgH) / 2;
 
-            if (blurCtx && frameCounter % 3 === 0) {
-              blurCtx.drawImage(video, 0, 0, blurCanvas.width, blurCanvas.height);
-            }
-            if (blurCtx) {
-              ctx.drawImage(blurCanvas, 0, 0, targetW, targetH);
-            }
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
-            ctx.fillRect(0, 0, targetW, targetH);
+            // Shift frame horizontally according to user positioning:
+            // 0% = Left subject aligned, 50% = Center subject, 100% = Right subject aligned
+            const panRatio = currentEffectiveCropX / 100;
+            const fgX = (targetW - fgW) * panRatio;
+            const fgY = (targetH - fgH) / 2;
 
             ctx.drawImage(video, 0, 0, vw, vh, fgX, fgY, fgW, fgH);
           }
         } else if (aspectRatio === '1:1') {
           const minDim = Math.min(vw, vh);
           const maxCropX = Math.max(0, vw - minDim);
-          const ratio = Math.max(0, Math.min(100, currentEffectiveCropX)) / 100;
+          const ratio = currentEffectiveCropX / 100;
           const cropX = maxCropX * ratio;
           const cropY = (vh - minDim) / 2;
           ctx.drawImage(video, cropX, cropY, minDim, minDim, 0, 0, targetW, targetH);
@@ -1321,7 +1413,9 @@ export async function downloadServerRenderedClip(
       quality: clip.exportQuality || '1080p',
       title: clip.title,
       watermark: clip.watermark !== false,
+      watermarkText: clip.watermarkText || 'DriaClip',
       watermarkPosition: clip.watermarkPosition || 'safe-top-left',
+      watermarkStyle: clip.watermarkStyle || 'neon-glow',
     }),
   });
 
@@ -1388,7 +1482,9 @@ export async function downloadServerRenderedLocalClip(
         quality: clip.exportQuality || '720p',
         title: clip.title || 'clip',
         watermark: clip.watermark !== false,
+        watermarkText: clip.watermarkText || 'DriaClip',
         watermarkPosition: clip.watermarkPosition || 'safe-top-left',
+        watermarkStyle: clip.watermarkStyle || 'neon-glow',
       }),
     });
 
@@ -1412,7 +1508,9 @@ export async function downloadServerRenderedLocalClip(
     quality: clip.exportQuality || '720p',
     title: clip.title || 'clip',
     watermark: String(clip.watermark !== false),
+    watermarkText: clip.watermarkText || 'DriaClip',
     watermarkPosition: clip.watermarkPosition || 'safe-top-left',
+    watermarkStyle: clip.watermarkStyle || 'neon-glow',
   });
 
   const res = await fetch(`/api/render-local-clip?${params.toString()}`, {

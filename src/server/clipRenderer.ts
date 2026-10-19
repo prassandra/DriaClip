@@ -54,7 +54,9 @@ export interface RenderClipRequest {
   quality?: '1080p' | '720p' | '480p' | '360p';
   title?: string;
   watermark?: boolean;
-  watermarkPosition?: 'safe-top-left' | 'safe-top-right' | 'center-top';
+  watermarkText?: string;
+  watermarkPosition?: 'safe-top-left' | 'safe-top-right' | 'center-top' | 'safe-bottom-left' | 'safe-bottom-right';
+  watermarkStyle?: 'neon-glow' | 'glass-blur' | 'minimal-dark' | 'gradient-accent';
 }
 
 function getBaseEncoderArgs(outputPath: string): string[] {
@@ -97,26 +99,33 @@ function getBaseEncoderArgs(outputPath: string): string[] {
 
 /**
  * Generates strategic FFmpeg drawtext watermark filter.
- * Positioned in the anti-crop vertical safe zone:
- * - Evades TikTok / Reels / Shorts upper app header/search (y > 70px)
- * - Evades right-side Like / Comment / Share action buttons (x < 75%)
- * - Evades bottom title / captions / audio ticker (y < 70%)
- * - Impossible to crop out without severely mutilating the speaker's face.
+ * Positioned in the anti-crop vertical safe zone with visitor's custom text.
  */
 function getWatermarkFilter(
   targetW: number,
   targetH: number,
   aspectRatio: '16:9' | '9:16' | '1:1',
-  position: 'safe-top-left' | 'safe-top-right' | 'center-top' = 'safe-top-left'
+  position: 'safe-top-left' | 'safe-top-right' | 'center-top' | 'safe-bottom-left' | 'safe-bottom-right' = 'safe-top-left',
+  customText: string = 'DriaClip',
+  style: string = 'neon-glow'
 ): string {
-  const fs = Math.max(20, Math.round(targetW * 0.035));
-  const bw = Math.max(6, Math.round(fs * 0.32));
+  const fs = Math.max(18, Math.round(targetW * 0.033));
+  const bw = Math.max(6, Math.round(fs * 0.35));
+
+  // Sanitize text for FFmpeg drawtext (drop escape-breaking chars)
+  const cleanText = (customText || 'DriaClip')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/:/g, '\\:')
+    .replace(/%/g, '%%')
+    .slice(0, 35) || 'DriaClip';
 
   let xExpr = '36';
   let yExpr = '88';
 
   if (aspectRatio === '9:16') {
     const safeTop = Math.round(targetH * 0.068);
+    const safeBottom = Math.round(targetH * 0.82);
     const safeMarginX = Math.round(targetW * 0.05);
 
     if (position === 'safe-top-right') {
@@ -125,6 +134,12 @@ function getWatermarkFilter(
     } else if (position === 'center-top') {
       xExpr = `(w-tw)/2`;
       yExpr = `${Math.round(targetH * 0.062)}`;
+    } else if (position === 'safe-bottom-left') {
+      xExpr = `${safeMarginX}`;
+      yExpr = `${safeBottom}`;
+    } else if (position === 'safe-bottom-right') {
+      xExpr = `w-tw-${safeMarginX}`;
+      yExpr = `${safeBottom}`;
     } else {
       // safe-top-left (Default - most tamper-resistant)
       xExpr = `${safeMarginX}`;
@@ -138,6 +153,12 @@ function getWatermarkFilter(
     } else if (position === 'center-top') {
       xExpr = `(w-tw)/2`;
       yExpr = `${margin}`;
+    } else if (position === 'safe-bottom-left') {
+      xExpr = `${margin}`;
+      yExpr = `h-th-${margin}`;
+    } else if (position === 'safe-bottom-right') {
+      xExpr = `w-tw-${margin}`;
+      yExpr = `h-th-${margin}`;
     } else {
       xExpr = `${margin}`;
       yExpr = `${margin}`;
@@ -152,13 +173,20 @@ function getWatermarkFilter(
     } else if (position === 'center-top') {
       xExpr = `(w-tw)/2`;
       yExpr = `${marginY}`;
+    } else if (position === 'safe-bottom-left') {
+      xExpr = `${marginX}`;
+      yExpr = `h-th-${marginY}`;
+    } else if (position === 'safe-bottom-right') {
+      xExpr = `w-tw-${marginX}`;
+      yExpr = `h-th-${marginY}`;
     } else {
       xExpr = `${marginX}`;
       yExpr = `${marginY}`;
     }
   }
 
-  return `drawtext=text='DriaClip':fontcolor=white@0.95:fontsize=${fs}:box=1:boxcolor=black@0.65:boxborderw=${bw}:shadowcolor=black@0.85:shadowx=2:shadowy=2:x=${xExpr}:y=${yExpr}`;
+  const boxColor = style === 'glass-blur' ? 'black@0.45' : 'black@0.55';
+  return `drawtext=text='[  ${cleanText.toUpperCase()}  ]':fontcolor=white@0.98:fontsize=${fs}:box=1:boxcolor=${boxColor}:boxborderw=${bw}:shadowcolor=black@0.90:shadowx=2:shadowy=2:x=${xExpr}:y=${yExpr}`;
 }
 
 /**
@@ -424,7 +452,7 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
 
     const enableWatermark = body.watermark !== false;
     const wmFilter = enableWatermark
-      ? getWatermarkFilter(targetW, targetH, aspectRatio, body.watermarkPosition)
+      ? getWatermarkFilter(targetW, targetH, aspectRatio, body.watermarkPosition, body.watermarkText || 'DriaClip', body.watermarkStyle || 'neon-glow')
       : null;
 
     // -sn strictly disables and drops all subtitle streams so no captions appear or get cut off!
@@ -462,22 +490,17 @@ export async function handleRenderClip(body: RenderClipRequest): Promise<{ fileP
           ...getBaseEncoderArgs(finalClipPath)
         );
       } else {
-        // center-crop: Centered at 50% with comfortable Zoom-Out and high-speed blurred backdrop
-        const zoomFactor = Math.max(0.05, Math.min(0.45, (Number(body.zoomOutPercent) || 20) / 100));
-        const tightH = targetH;
-        const fitH = Math.round(targetW / (16 / 9));
-        const rawFgH = Math.round(tightH - (tightH - fitH) * zoomFactor * 1.8);
-        const safeFgH = rawFgH % 2 === 0 ? rawFgH : rawFgH - 1;
-
-        const filterComplex = wmFilter
-          ? `[0:v]scale=180:320:force_original_aspect_ratio=increase,crop=180:320:(in_w-180)/2:(in_h-320)/2,boxblur=5:2,scale=${targetW}:${targetH}[bg];[0:v]scale=-2:${safeFgH}[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[comp];[comp]${wmFilter}[outv]`
-          : `[0:v]scale=180:320:force_original_aspect_ratio=increase,crop=180:320:(in_w-180)/2:(in_h-320)/2,boxblur=5:2,scale=${targetW}:${targetH}[bg];[0:v]scale=-2:${safeFgH}[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]`;
+        // Direct automatic 9:16 vertical crop with manual pan (cropPositionX)
+        const cropRatio = Math.max(0, Math.min(100, Number(cropPositionX ?? 50))) / 100;
+        const vfStr = wmFilter
+          ? `scale=-2:${targetH},crop=${targetW}:${targetH}:(in_w-${targetW})*${cropRatio.toFixed(3)}:0,${wmFilter}`
+          : `scale=-2:${targetH},crop=${targetW}:${targetH}:(in_w-${targetW})*${cropRatio.toFixed(3)}:0`;
 
         ffmpegArgs.push(
-          '-filter_complex',
-          filterComplex,
+          '-vf',
+          vfStr,
           '-map',
-          '[outv]',
+          '0:v',
           '-map',
           '0:a?',
           ...getBaseEncoderArgs(finalClipPath)
@@ -582,7 +605,7 @@ export async function handleRenderLocalClip(
 
     const enableWatermark = options.watermark !== false;
     const wmFilter = enableWatermark
-      ? getWatermarkFilter(targetW, targetH, aspectRatio, options.watermarkPosition)
+      ? getWatermarkFilter(targetW, targetH, aspectRatio, options.watermarkPosition, options.watermarkText || 'DriaClip', options.watermarkStyle || 'neon-glow')
       : null;
 
     const ffmpegTimeoutMs = Math.max(300000, safeDuration * 5000);
@@ -631,22 +654,17 @@ export async function handleRenderLocalClip(
           ...getBaseEncoderArgs(finalClipPath)
         );
       } else {
-        // center-crop with comfortable Zoom-Out
-        const zoomFactor = Math.max(0.05, Math.min(0.45, (Number(zoomOutPercent) || 20) / 100));
-        const tightH = targetH;
-        const fitH = Math.round(targetW / (16 / 9));
-        const rawFgH = Math.round(tightH - (tightH - fitH) * zoomFactor * 1.8);
-        const safeFgH = rawFgH % 2 === 0 ? rawFgH : rawFgH - 1;
-
-        const filterComplex = wmFilter
-          ? `[0:v]scale=180:320:force_original_aspect_ratio=increase,crop=180:320:(in_w-180)/2:(in_h-320)/2,boxblur=5:2,scale=${targetW}:${targetH}[bg];[0:v]scale=-2:${safeFgH}[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[comp];[comp]${wmFilter}[outv]`
-          : `[0:v]scale=180:320:force_original_aspect_ratio=increase,crop=180:320:(in_w-180)/2:(in_h-320)/2,boxblur=5:2,scale=${targetW}:${targetH}[bg];[0:v]scale=-2:${safeFgH}[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]`;
+        // Direct automatic 9:16 vertical crop with manual pan (cropPositionX)
+        const cropRatio = Math.max(0, Math.min(100, Number(options.cropPositionX ?? 50))) / 100;
+        const vfStr = wmFilter
+          ? `scale=-2:${targetH},crop=${targetW}:${targetH}:(in_w-${targetW})*${cropRatio.toFixed(3)}:0,${wmFilter}`
+          : `scale=-2:${targetH},crop=${targetW}:${targetH}:(in_w-${targetW})*${cropRatio.toFixed(3)}:0`;
 
         ffmpegArgs.push(
-          '-filter_complex',
-          filterComplex,
+          '-vf',
+          vfStr,
           '-map',
-          '[outv]',
+          '0:v',
           '-map',
           '0:a?',
           ...getBaseEncoderArgs(finalClipPath)
