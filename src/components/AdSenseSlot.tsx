@@ -57,59 +57,41 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
 
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-slate-50/80 dark:bg-slate-900/60 p-3 sm:p-4 shadow-sm backdrop-blur-sm transition-all flex flex-col justify-between ${className}`}
+      className={`w-full overflow-visible text-center clear-both p-0 transition-all ${className}`}
     >
-      {/* Top Header Badge — Required by Google AdSense Policies */}
-      <div className="flex items-center justify-between border-b border-slate-200/70 dark:border-slate-800/70 pb-1.5 mb-2 text-[10px] text-slate-400 dark:text-slate-500 font-mono tracking-wider uppercase select-none">
-        <span className="flex items-center gap-1.5">
-          <svg className="w-3.5 h-3.5 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.8 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5zm4 4h-2v-6h2v6zm0-8h-2V7h2v1z"/>
-          </svg>
-          <span className="font-semibold text-slate-500 dark:text-slate-400">{label}</span>
-        </span>
-        <span className="text-[9px] text-violet-500 dark:text-violet-400 font-semibold lowercase">
-          clip.driacom.com
-        </span>
+      {/* Subtle Header Label per Google AdSense Policies */}
+      <div className="flex items-center justify-center gap-1.5 pb-1 text-[10px] text-slate-400 dark:text-slate-500 font-mono tracking-wider uppercase select-none">
+        <svg className="w-3 h-3 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.8 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5zm4 4h-2v-6h2v6zm0-8h-2V7h2v1z"/>
+        </svg>
+        <span>{label}</span>
       </div>
 
-      {/* Main Google AdSense Tag Container */}
-      <div className="relative min-h-[100px] sm:min-h-[140px] w-full flex items-center justify-center overflow-hidden">
+      {/* Main Google AdSense Tag Container - Zero padding, zero overflow-hidden, 100% responsive */}
+      <div className="w-full overflow-visible flex items-center justify-center">
         <ins
           ref={adRef}
           className="adsbygoogle"
-          style={{ display: 'block', width: '100%', textAlign: 'center' }}
+          style={{ display: 'block', width: '100%' }}
           data-ad-client={adClient}
           data-ad-slot={slotId}
           data-ad-format={format}
           data-full-width-responsive="true"
           {...(layoutKey ? { 'data-ad-layout-key': layoutKey } : {})}
         />
-
-        {/* Fallback & Preview Badge when live ads are loading or pending domain activation */}
-        {!isFilled && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-3 text-center pointer-events-none select-none bg-slate-100/40 dark:bg-slate-900/40 rounded-xl">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500 dark:bg-blue-500/20 mb-1.5 border border-blue-500/20">
-              <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                <line x1="8" y1="21" x2="16" y2="21"/>
-                <line x1="12" y1="17" x2="12" y2="21"/>
-              </svg>
-            </div>
-            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-              Slot Iklan Google AdSense #{slotId}
-            </p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-              Unit Iklan Otomatis &bull; <strong className="text-violet-600 dark:text-violet-400 font-semibold">clip.driacom.com</strong>
-            </p>
-          </div>
-        )}
       </div>
 
-      {/* Subtle Bottom Note */}
-      <div className="pt-2 mt-1 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[9px] text-slate-400 dark:text-slate-500 font-mono">
-        <span>Slot #{slotId}</span>
-        <span>AdSense Verified</span>
-      </div>
+      {/* Subtle indicator shown only when ad is pending/not filled yet */}
+      {!isFilled && (
+        <div className="w-full py-4 px-2 my-1 rounded-xl border border-dashed border-slate-300/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 text-center select-none">
+          <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            Slot Iklan Google AdSense #{slotId} (Responsive)
+          </p>
+          <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
+            Ukuran responsif otomatis penuh &bull; clip.driacom.com
+          </p>
+        </div>
+      )}
     </div>
   );
 };
