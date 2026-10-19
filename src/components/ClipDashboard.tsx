@@ -835,19 +835,6 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
-            {/* If YouTube, provide direct link to timestamp */}
-            {isYouTube && effectiveYoutubeId && (
-              <a
-                href={`https://www.youtube.com/watch?v=${effectiveYoutubeId}&t=${Math.round(clip.startTime)}s`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-lg border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
-                title={isId ? 'Buka segmen ini langsung di YouTube' : 'Open this segment directly on YouTube'}
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            )}
-
             <button
               type="button"
               onClick={() => onFineTuneClip(clip)}
@@ -951,8 +938,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
         return;
       } catch (err: any) {
         if (err?.code === 'YOUTUBE_BOT_PROTECTION' || err?.message?.includes('YOUTUBE_BOT_PROTECTION')) {
-          console.warn('[DriaClip] Notice: YouTube bot challenge encountered on server request.');
-          setDownloadError(err.message || 'YouTube memerlukan verifikasi bot pada server cloud.');
+          setDownloadError(isId ? 'Pemrosesan cloud memerlukan verifikasi. Silakan unduh video di perangkat Anda lalu pilih berkas video.' : 'Verification required. Please choose a local video file.');
         } else {
           console.error('Server render error:', err);
           setDownloadError(
@@ -1329,10 +1315,7 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
               />
 
               {/* Google AdSense In-Feed Slot After Card for clip.driacom.com */}
-              <AdSenseSlot
-                slotId="5462390377"
-                label={isId ? `Iklan Google AdSense` : `Google AdSense`}
-              />
+              <AdSenseSlot slotId="5462390377" />
             </React.Fragment>
           ))}
         </div>

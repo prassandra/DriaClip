@@ -20,6 +20,7 @@ import { ClipConfig, AspectRatio, VerticalStyle, ExportQuality, VideoSourceMetad
 import { Language, TRANSLATIONS } from '../i18n/translations';
 import { formatTimeCode } from '../services/videoClipper';
 import { WatermarkBadge } from './WatermarkBadge';
+import { AdSenseSlot } from './AdSenseSlot';
 
 interface ClippingControlsProps {
   config: ClipConfig;
@@ -260,6 +261,9 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
         )}
       </div>
 
+      {/* Google AdSense Slot — Sela-sela Padding Menu Durasi & Rasio */}
+      <AdSenseSlot slotId="5462390377" />
+
       {/* Module 2: Pilihan Rasio Aspek (9:16, 16:9, 1:1) */}
       <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-5 sm:p-6 space-y-4">
         <div className="flex items-center justify-between">
@@ -334,7 +338,7 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
                 </span>
               </div>
               <p className={`text-xs leading-snug ${config.aspectRatio === '16:9' ? 'text-violet-100' : 'text-slate-500 dark:text-slate-400'}`}>
-                YouTube • Widescreen • TV
+                {isId ? 'Lanskap • Layar Lebar • PC / TV' : 'Landscape • Widescreen • PC / TV'}
               </p>
             </div>
 
@@ -569,6 +573,9 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
         )}
       </div>
 
+      {/* Google AdSense Slot — Sela-sela Padding Menu Rasio & Resolusi */}
+      <AdSenseSlot slotId="5462390377" />
+
       {/* Module 3: Pilihan Resolusi Ekspor — Clean, Direct, and Minimalist (1080p, 720p, 480p, 360p) */}
       <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-5 sm:p-6 space-y-3">
         <div className="flex items-center justify-between">
@@ -604,6 +611,9 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
           })}
         </div>
       </div>
+
+      {/* Google AdSense Slot — Sela-sela Padding Menu Resolusi & Watermark */}
+      <AdSenseSlot slotId="5462390377" />
 
       {/* Module 4: Watermark Kustom & Perlindungan Konten — Manual Input, Aesthetic Themes & Strategic Anti-Crop */}
       <div className="rounded-2xl border border-violet-200/80 dark:border-violet-900/40 bg-violet-50/40 dark:bg-[#13112c]/40 p-5 sm:p-6 space-y-5">
@@ -853,6 +863,9 @@ export const ClippingControls: React.FC<ClippingControlsProps> = ({
           </div>
         )}
       </div>
+
+      {/* Google AdSense Slot — Sela-sela Padding Menu Watermark & Tombol Aksi */}
+      <AdSenseSlot slotId="5462390377" />
 
       {/* Action Trigger Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-slate-200/80 dark:border-slate-800/80">

@@ -267,8 +267,8 @@ export const LegalAndInfoPages: React.FC<LegalAndInfoPagesProps> = ({
                 </h4>
                 <p>
                   {isId
-                    ? 'Untuk pemrosesan yang memerlukan alur kerja server (seperti ekstraksi tautan video publik melalui yt-dlp): Semua file master dan artefak klip sementara yang disimpan di buffer penyimpanan SSD sementara akan dihapus secara permanen dan otomatis dalam waktu maksimal 24 hingga 48 jam.'
-                    : 'For workflows requiring server-side staging (such as public stream extraction via yt-dlp): Master files and ephemeral clip chunks stored in worker SSD buffers are strictly subject to an automated lifecycle purge within 24 to 48 hours.'}
+                    ? 'Untuk pemrosesan yang memerlukan alur kerja server: Semua file master dan artefak klip sementara yang disimpan di buffer penyimpanan SSD sementara akan dihapus secara permanen dan otomatis dalam waktu maksimal 24 hingga 48 jam.'
+                    : 'For workflows requiring server-side staging: Master files and ephemeral clip chunks stored in worker SSD buffers are strictly subject to an automated lifecycle purge within 24 to 48 hours.'}
                 </p>
               </section>
 
@@ -289,17 +289,17 @@ export const LegalAndInfoPages: React.FC<LegalAndInfoPagesProps> = ({
           {currentPage === 'disclaimer' && (
             <div className="space-y-5 text-xs text-neutral-300 leading-relaxed">
               <div className="rounded-lg bg-amber-950/20 border border-amber-800/40 p-3 text-[11px] font-mono text-amber-300">
-                {isId ? 'Pemberitahuan Hukum Penting Mengenai Konten Pihak Ketiga' : 'Important Legal Notice Regarding Third-Party Content Ingestion'}
+                {isId ? 'Pemberitahuan Hukum Penting Mengenai Konten Video' : 'Important Legal Notice Regarding Video Content'}
               </div>
 
               <section className="space-y-2">
                 <h4 className="text-sm font-bold text-white">
-                  {isId ? '1. Pedoman Penggunaan Konten YouTube & Pihak Ketiga' : '1. YouTube & Third-Party Content Guidelines'}
+                  {isId ? '1. Pedoman Hak Cipta & Konten Video' : '1. Copyright & Video Content Guidelines'}
                 </h4>
                 <p>
                   {isId
-                    ? 'DriaClip by Driacom menyediakan fungsionalitas ekstraksi tautan publik semata-mata untuk video milik pengguna sendiri, materi domain publik, atau konten yang berada di bawah lisensi Creative Commons dan doktrin Penggunaan Wajar (Fair Use) untuk tujuan edukasi, kritik, analisis, atau kutipan.'
-                    : 'DriaClip by Driacom provides URL extraction tools strictly for personal creator footage, public domain content, and media governed under Creative Commons or standard Fair Use doctrine (commentary, criticism, analysis, and educational transformational works).'}
+                    ? 'DriaClip by Driacom ditujukan semata-mata untuk memproses berkas video milik pengguna sendiri, materi domain publik, atau konten yang berada di bawah lisensi Creative Commons dan doktrin Penggunaan Wajar (Fair Use) untuk tujuan edukasi, kritik, analisis, atau kutipan.'
+                    : 'DriaClip by Driacom is designed strictly for personal creator footage, public domain content, and media governed under Creative Commons or standard Fair Use doctrine (commentary, criticism, analysis, and educational transformational works).'}
                 </p>
               </section>
 

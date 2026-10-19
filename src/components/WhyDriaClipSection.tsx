@@ -49,8 +49,8 @@ export const WhyDriaClipSection: React.FC<WhyDriaClipSectionProps> = ({ lang }) 
       color: 'emerald',
       title: isId ? 'Multi-Format & Output MP4' : 'Multi-Format Input & MP4 Output',
       desc: isId 
-        ? 'Menerima berbagai macam format input (MP4, WebM, MOV, MKV, AVI, TS, 3GP) maupun tautan online, dengan output standar MP4 yang kompatibel di semua platform.'
-        : 'Accepts diverse input formats (MP4, WebM, MOV, MKV, AVI, TS, 3GP) and online links, generating universal MP4 files ready for any media player.'
+        ? 'Menerima berbagai macam format input (MP4, WebM, MOV, MKV, AVI, TS, 3GP) dari penyimpanan perangkat Anda, dengan output standar MP4 yang kompatibel di semua platform.'
+        : 'Accepts diverse input formats (MP4, WebM, MOV, MKV, AVI, TS, 3GP) directly from your device storage, generating universal MP4 files ready for any media player.'
     },
     {
       icon: Layers,
