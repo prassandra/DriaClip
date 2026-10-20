@@ -11,9 +11,9 @@ import {
   Globe, 
   Type, 
   ChevronDown, 
-  Check, 
   ExternalLink, 
-  Wrench
+  Wrench,
+  Check
 } from 'lucide-react';
 import { DriaClipLogo } from './DriaClipLogo';
 import { Language, FontSize, ThemeMode, TRANSLATIONS } from '../i18n/translations';
@@ -44,18 +44,16 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleTheme,
   onOpenLegalPage: _onOpenLegalPage,
 }) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
-  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [toolsDropdownOpen, setToolsDropdownOpen] = useState(false);
-  const fontDropdownRef = useRef<HTMLDivElement>(null);
-  const langDropdownRef = useRef<HTMLDivElement>(null);
+  
+  const menuRef = useRef<HTMLDivElement>(null);
   const toolsDropdownRef = useRef<HTMLDivElement>(null);
 
   const t = TRANSLATIONS[lang];
   const isId = lang === 'id';
 
-  // Font labels based on language (NO px values in layout!)
+  // Font labels based on language
   const fontLabels: Record<FontSize, { id: string; en: string }> = {
     small: { id: 'Kecil', en: 'Small' },
     normal: { id: 'Normal', en: 'Normal' },
@@ -65,11 +63,8 @@ export const Header: React.FC<HeaderProps> = ({
   // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (fontDropdownRef.current && !fontDropdownRef.current.contains(e.target as Node)) {
-        setFontDropdownOpen(false);
-      }
-      if (langDropdownRef.current && !langDropdownRef.current.contains(e.target as Node)) {
-        setLangDropdownOpen(false);
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
       }
       if (toolsDropdownRef.current && !toolsDropdownRef.current.contains(e.target as Node)) {
         setToolsDropdownOpen(false);
@@ -163,8 +158,7 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={() => {
                 setToolsDropdownOpen(!toolsDropdownOpen);
-                setFontDropdownOpen(false);
-                setLangDropdownOpen(false);
+                setMenuOpen(false);
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer leading-none text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900"
             >
@@ -218,130 +212,15 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </nav>
 
-        {/* Desktop Header Controls: Theme, Font Size & Language */}
-        <div className="hidden sm:flex items-center gap-2">
-          {/* Theme Toggle Button */}
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            title={theme === 'dark' ? t.nav.themeLight : t.nav.themeDark}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600/40 transition-colors cursor-pointer"
-            aria-label="Toggle Theme Dark/Light"
-          >
-            {theme === 'dark' ? (
-              <Sun className="h-4 w-4 text-amber-400 animate-in fade-in" />
-            ) : (
-              <Moon className="h-4 w-4 text-violet-600 animate-in fade-in" />
-            )}
-          </button>
-
-          {/* Font Size Dropdown */}
-          <div className="relative" ref={fontDropdownRef}>
-            <button
-              type="button"
-              onClick={() => {
-                setFontDropdownOpen(!fontDropdownOpen);
-                setLangDropdownOpen(false);
-              }}
-              title="Ukuran Font"
-              className="flex items-center gap-1.5 h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600/40 text-xs font-semibold cursor-pointer transition-colors"
-            >
-              <Type className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-              <span>{fontLabels[fontSize][lang]}</span>
-              <ChevronDown className={`h-3 w-3 transition-transform ${fontDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            {fontDropdownOpen && (
-              <div className="absolute right-0 mt-1.5 w-36 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] shadow-xl p-1.5 z-50 animate-in fade-in duration-100">
-                {(['small', 'normal', 'large'] as const).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => {
-                      onChangeFontSize(s);
-                      setFontDropdownOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
-                      fontSize === s
-                        ? 'bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 font-bold'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <span>{fontLabels[s][lang]}</span>
-                    {fontSize === s && <Check className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Language Dropdown */}
-          <div className="relative" ref={langDropdownRef}>
-            <button
-              type="button"
-              onClick={() => {
-                setLangDropdownOpen(!langDropdownOpen);
-                setFontDropdownOpen(false);
-              }}
-              title="Pilih Bahasa / Language"
-              className="flex items-center gap-1.5 h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600/40 text-xs font-bold cursor-pointer transition-colors"
-            >
-              <Globe className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
-              <span>{lang === 'id' ? '🇮🇩 ID' : '🇺🇸 EN'}</span>
-              <ChevronDown className={`h-3 w-3 transition-transform ${langDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            {langDropdownOpen && (
-              <div className="absolute right-0 mt-1.5 w-44 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] shadow-xl p-1.5 z-50 animate-in fade-in duration-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onToggleLang('id');
-                    setLangDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
-                    lang === 'id'
-                      ? 'bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 font-bold'
-                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <span>🇮🇩</span>
-                    <span>Bahasa Indonesia</span>
-                  </span>
-                  {lang === 'id' && <Check className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onToggleLang('en');
-                    setLangDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
-                    lang === 'en'
-                      ? 'bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 font-bold'
-                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <span>🇺🇸</span>
-                    <span>English</span>
-                  </span>
-                  {lang === 'en' && <Check className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Mobile View Controls: Dark/Light Mode Button & Hamburger Menu */}
-        <div className="flex sm:hidden items-center gap-2">
+        {/* Right Controls: Theme Toggle & Hamburger Menu for Desktop AND Mobile */}
+        <div className="flex items-center gap-2" ref={menuRef}>
           {/* Dark / Light Mode Toggle Button */}
           <button
             type="button"
             onClick={onToggleTheme}
+            title={theme === 'dark' ? t.nav.themeLight : t.nav.themeDark}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600/40 transition-colors cursor-pointer shadow-xs active:scale-95"
             aria-label="Toggle Theme Dark/Light"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs active:scale-95 transition-transform"
           >
             {theme === 'dark' ? (
               <Sun className="h-4 w-4 text-amber-400 animate-in fade-in" />
@@ -350,30 +229,123 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* Hamburger Menu Toggle Button */}
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs active:scale-95 transition-transform"
-            aria-label="Toggle Navigation Menu"
-          >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          {/* Unified Hamburger Menu Button for Desktop & Mobile */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(!menuOpen);
+                setToolsDropdownOpen(false);
+              }}
+              title={isId ? 'Menu & Pengaturan (Font & Bahasa)' : 'Menu & Settings (Font & Language)'}
+              aria-label="Toggle Settings and Navigation Menu"
+              aria-expanded={menuOpen}
+              className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-all cursor-pointer shadow-xs active:scale-95 ${
+                menuOpen
+                  ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-300 ring-2 ring-violet-500/20'
+                  : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600/40'
+              }`}
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+
+            {/* Desktop Popover Menu (Visible on sm and up) */}
+            {menuOpen && (
+              <div className="hidden sm:block absolute right-0 mt-2 w-72 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] shadow-2xl p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/80">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    {isId ? 'Pengaturan Tampilan' : 'Display Settings'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setMenuOpen(false)}
+                    className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* 1. Desktop: Font Size Controls */}
+                <div className="py-3 border-b border-slate-100 dark:border-slate-800/80 space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <Type className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                    <span>{isId ? 'Ukuran Font' : 'Font Size'}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(['small', 'normal', 'large'] as const).map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => onChangeFontSize(s)}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-semibold text-center cursor-pointer transition-all border leading-normal ${
+                          fontSize === s
+                            ? 'bg-violet-600 text-white border-violet-600 shadow-xs'
+                            : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        {fontLabels[s][lang]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Desktop: Language Controls (Strictly Text ID & GB - No Broken Flag Icons) */}
+                <div className="pt-3 pb-1 space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <Globe className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
+                    <span>{isId ? 'Bahasa' : 'Language'}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onToggleLang('id')}
+                      className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold cursor-pointer transition-all border leading-normal ${
+                        lang === 'id'
+                          ? 'bg-violet-600 text-white border-violet-600 shadow-xs'
+                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <span className="font-mono font-extrabold text-[11px] px-1.5 py-0.5 rounded bg-black/15 dark:bg-white/15">
+                        ID
+                      </span>
+                      <span>Indonesia</span>
+                      {lang === 'id' && <Check className="h-3 w-3 ml-auto shrink-0" />}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onToggleLang('en')}
+                      className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold cursor-pointer transition-all border leading-normal ${
+                        lang === 'en'
+                          ? 'bg-violet-600 text-white border-violet-600 shadow-xs'
+                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <span className="font-mono font-extrabold text-[11px] px-1.5 py-0.5 rounded bg-black/15 dark:bg-white/15">
+                        GB
+                      </span>
+                      <span>English</span>
+                      {lang === 'en' && <Check className="h-3 w-3 ml-auto shrink-0" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Mobile Drawer Navigation (When Hamburger Clicked) */}
-      {mobileMenuOpen && (
+      {/* Mobile Drawer Navigation (When Hamburger Clicked on Mobile Screens < sm) */}
+      {menuOpen && (
         <div className="sm:hidden border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0b0f19] px-4 py-5 space-y-4 animate-in slide-in-from-top duration-200 shadow-2xl max-w-full overflow-hidden">
           
-          {/* 1. Item Pertama: Ukuran Font (Bawah nya baru: Kecil, Normal, Besar) */}
+          {/* 1. Item Pertama: Ukuran Font (Kecil, Normal, Besar) */}
           <div className="space-y-2 pb-3 border-b border-slate-200 dark:border-slate-800/80">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
               <Type className="h-4 w-4 text-violet-600 dark:text-violet-400" />
               <span>{isId ? 'Ukuran Font' : 'Font Size'}</span>
             </div>
             
-            {/* Opsi di bawahnya: Kecil, Normal, Besar */}
             <div className="grid grid-cols-3 gap-2">
               {(['small', 'normal', 'large'] as const).map((s) => (
                 <button
@@ -392,14 +364,13 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* 2. Item Kedua: Ganti Bahasa (Bawah nya baru: Indonesia dan English) */}
+          {/* 2. Item Kedua: Ganti Bahasa (Strictly Text ID & GB - No Broken Flag Icons) */}
           <div className="space-y-2 pb-3 border-b border-slate-200 dark:border-slate-800/80">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
               <Globe className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
               <span>{isId ? 'Ganti Bahasa' : 'Language'}</span>
             </div>
 
-            {/* Opsi di bawahnya: Indonesia dan English */}
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -410,7 +381,9 @@ export const Header: React.FC<HeaderProps> = ({
                     : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
                 }`}
               >
-                <span className="text-base">🇮🇩</span>
+                <span className="font-mono font-extrabold text-xs px-1.5 py-0.5 rounded bg-black/15 dark:bg-white/15">
+                  ID
+                </span>
                 <span>Indonesia</span>
               </button>
 
@@ -423,7 +396,9 @@ export const Header: React.FC<HeaderProps> = ({
                     : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
                 }`}
               >
-                <span className="text-base">🇺🇸</span>
+                <span className="font-mono font-extrabold text-xs px-1.5 py-0.5 rounded bg-black/15 dark:bg-white/15">
+                  GB
+                </span>
                 <span>English</span>
               </button>
             </div>
@@ -440,7 +415,7 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={() => {
                   setActiveTab('studio');
-                  setMobileMenuOpen(false);
+                  setMenuOpen(false);
                 }}
                 className={`flex items-center gap-2 p-2.5 rounded-lg border text-left cursor-pointer transition-all leading-normal ${
                   activeTab === 'studio'
@@ -456,7 +431,7 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={() => {
                   setActiveTab('clips');
-                  setMobileMenuOpen(false);
+                  setMenuOpen(false);
                 }}
                 className={`flex items-center gap-2 p-2.5 rounded-lg border text-left cursor-pointer transition-all leading-normal ${
                   activeTab === 'clips'
@@ -477,7 +452,7 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={() => {
                   setActiveTab('guide');
-                  setMobileMenuOpen(false);
+                  setMenuOpen(false);
                 }}
                 className={`flex items-center gap-2 p-2.5 rounded-lg border text-left cursor-pointer transition-all leading-normal ${
                   activeTab === 'guide'
@@ -493,7 +468,7 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={() => {
                   setActiveTab('faq');
-                  setMobileMenuOpen(false);
+                  setMenuOpen(false);
                 }}
                 className={`flex items-center gap-2 p-2.5 rounded-lg border text-left cursor-pointer transition-all leading-normal ${
                   activeTab === 'faq'

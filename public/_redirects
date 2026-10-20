@@ -1,0 +1,4 @@
+# Cloudflare Pages 301 Permanent Redirect
+# Direct all traffic from driaclip.pages.dev to official subdomain clip.driacom.com
+https://driaclip.pages.dev/* https://clip.driacom.com/:splat 301!
+http://driaclip.pages.dev/* https://clip.driacom.com/:splat 301!

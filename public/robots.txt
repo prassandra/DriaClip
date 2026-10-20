@@ -1,6 +1,6 @@
 # robots.txt for DriaClip by DriaCom (https://clip.driacom.com)
 # Clip Video Secara Gratis Cocok untuk para Clipper
-# Allows all search engine crawlers, answer engine crawlers, and AI bots to index the application.
+# Full SEO, AEO, and GEO optimization allowing all search engines and AI bots
 
 User-agent: *
 Allow: /
@@ -13,7 +13,7 @@ Allow: /contact
 Allow: /privacy
 Allow: /disclaimer
 
-# Google Search & AdSense Bots
+# Google Search, Google Images, Video & AdSense Crawlers
 User-agent: Googlebot
 Allow: /
 
@@ -23,16 +23,25 @@ Allow: /
 User-agent: Googlebot-Video
 Allow: /
 
+User-agent: Googlebot-Mobile
+Allow: /
+
 User-agent: Mediapartners-Google
 Allow: /
 
 User-agent: AdsBot-Google
 Allow: /
 
+User-agent: AdsBot-Google-Mobile
+Allow: /
+
+User-agent: GoogleOther
+Allow: /
+
 User-agent: Google-Extended
 Allow: /
 
-# Microsoft Bing Search & Copilot
+# Microsoft Bing Search, Copilot & BingPreview
 User-agent: Bingbot
 Allow: /
 
@@ -42,6 +51,9 @@ Allow: /
 User-agent: BingPreview
 Allow: /
 
+User-agent: Copilot
+Allow: /
+
 # OpenAI & ChatGPT Search / Answer Engine
 User-agent: GPTBot
 Allow: /
@@ -49,56 +61,102 @@ Allow: /
 User-agent: ChatGPT-User
 Allow: /
 
-# Anthropic Claude AI Bot
+User-agent: OAI-SearchBot
+Allow: /
+
+# Anthropic Claude AI Crawlers
 User-agent: ClaudeBot
 Allow: /
 
 User-agent: anthropic-ai
 Allow: /
 
+User-agent: Claude-Web
+Allow: /
+
 # Perplexity AI Answer Engine
 User-agent: PerplexityBot
 Allow: /
 
-# Apple Search & Siri Intelligence Bot
+# Apple Search, Safari & Apple Intelligence
 User-agent: Applebot
 Allow: /
 
-# Other Major Global Search Engines
-User-agent: Slurp
+User-agent: Applebot-Extended
 Allow: /
 
+# DuckDuckGo
 User-agent: DuckDuckBot
 Allow: /
 
-User-agent: Baiduspider
-Allow: /
-
+# Yandex Search, Images & Video
 User-agent: Yandex
 Allow: /
 
 User-agent: YandexBot
 Allow: /
 
-User-agent: CCBot
+User-agent: YandexImages
 Allow: /
 
+User-agent: YandexVideo
+Allow: /
+
+User-agent: YandexMedia
+Allow: /
+
+# Yahoo! Search
+User-agent: Slurp
+Allow: /
+
+# Baidu Search
+User-agent: Baiduspider
+Allow: /
+
+User-agent: Baiduspider-image
+Allow: /
+
+User-agent: Baiduspider-video
+Allow: /
+
+# Meta / Facebook & Instagram Crawlers
+User-agent: FacebookBot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+# Twitter / X Crawler
+User-agent: Twitterbot
+Allow: /
+
+# ByteDance / TikTok Crawlers
 User-agent: Bytespider
+Allow: /
+
+# Other Web & AI Crawlers (Amazon, Common Crawl, Diffbot, You, Mistral, Cohere)
+User-agent: Amazonbot
+Allow: /
+
+User-agent: CCBot
 Allow: /
 
 User-agent: Diffbot
 Allow: /
 
-User-agent: FacebookBot
+User-agent: YouBot
 Allow: /
 
-User-agent: Twitterbot
+User-agent: cohere-ai
 Allow: /
 
-# Polite crawling parameter
-Crawl-delay: 1
+User-agent: MistralBot
+Allow: /
 
-# Disallow transient temporary processing endpoints
+# Disallow transient temporary processing endpoints only
 Disallow: /api/internal/
 Disallow: /tmp/
 

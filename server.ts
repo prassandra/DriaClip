@@ -8,6 +8,15 @@ import { handleRenderClip, handleRenderLocalClip } from './src/server/clipRender
 const app = express();
 const PORT = 3000;
 
+// 301 Permanent Redirect from driaclip.pages.dev to clip.driacom.com
+app.use((req, res, next) => {
+  const host = (req.headers.host || '').toLowerCase();
+  if (host.includes('driaclip.pages.dev')) {
+    return res.redirect(301, `https://clip.driacom.com${req.originalUrl}`);
+  }
+  next();
+});
+
 app.use(express.json());
 
 const UPLOAD_TMP_DIR = path.join(os.tmpdir(), 'driaclip_uploads');

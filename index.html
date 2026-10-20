@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
+    <!-- Automatic 301-Equivalent Instant Redirect from driaclip.pages.dev to clip.driacom.com -->
+    <script>
+      (function() {
+        try {
+          var h = window.location.hostname;
+          if (h === 'driaclip.pages.dev' || h.endsWith('.driaclip.pages.dev')) {
+            window.location.replace('https://clip.driacom.com' + window.location.pathname + window.location.search + window.location.hash);
+          }
+        } catch (e) {}
+      })();
+    </script>
+    
     <!-- Primary Page Title & Meta Description (Full SEO, AEO, and GEO Optimized) -->
     <title>DriaClip – Clip Video Secara Gratis Cocok untuk para Clipper | Potong Video AI 9:16 Otomatis</title>
     <meta name="description" content="Clip video secara gratis cocok untuk para clipper. Potong video panjang jadi klip pendek viral 9:16 TikTok, Reels &amp; Shorts otomatis tanpa watermark paksa di clip.driacom.com." />
@@ -28,17 +40,28 @@
     <meta name="distribution" content="Global" />
     <meta name="rating" content="General" />
 
-    <!-- AEO & Search Engine Crawlers Directives (Googlebot, Bingbot, Slurp, Baidu, Yandex, AI Bots) -->
+    <!-- Search Engine Directives: Google, Bing, Yandex, DuckDuckGo, Yahoo/Slurp, Applebot, Baidu -->
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
     <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
-    <meta name="slurp" content="index, follow" />
-    <meta name="duckduckbot" content="index, follow" />
-    <meta name="baiduspider" content="index, follow" />
     <meta name="yandex" content="index, follow" />
+    <meta name="duckduckbot" content="index, follow" />
+    <meta name="slurp" content="index, follow" />
+    <meta name="baiduspider" content="index, follow" />
+    <meta name="applebot" content="index, follow" />
+    <meta name="msnbot" content="index, follow" />
 
-    <!-- AI Answer Engine Crawler Optimization (ChatGPT, Perplexity, Claude, Gemini, Copilot, Applebot) -->
+    <!-- AI Answer Engine & Crawler Optimization (ChatGPT, Claude, Perplexity, Gemini, Copilot, Apple Intelligence) -->
     <meta name="ai-crawlers" content="all, allow" />
+    <meta name="GPTBot" content="all, allow" />
+    <meta name="ChatGPT-User" content="all, allow" />
+    <meta name="ClaudeBot" content="all, allow" />
+    <meta name="anthropic-ai" content="all, allow" />
+    <meta name="PerplexityBot" content="all, allow" />
+    <meta name="Google-Extended" content="all, allow" />
+    <meta name="Applebot-Extended" content="all, allow" />
+    <meta name="Bytespider" content="all, allow" />
+    <meta name="CCBot" content="all, allow" />
     <meta name="generator" content="DriaClip by DriaCom" />
 
     <!-- Google AdSense Official Integration for clip.driacom.com -->
