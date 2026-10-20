@@ -4,7 +4,8 @@ import {
   CheckCircle2, 
   Zap, 
   ShieldCheck, 
-  AlertCircle
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
@@ -106,6 +107,7 @@ export default function App() {
   const [previewClip, setPreviewClip] = useState<GeneratedClip | null>(null);
   const [fineTuneClip, setFineTuneClip] = useState<GeneratedClip | null>(null);
   const [legalPageView, setLegalPageView] = useState<PageView>('none');
+  const [showStickyAd, setShowStickyAd] = useState(true);
 
   // Sync font size with document root and body: 14px, 16px, 18px
   useEffect(() => {
@@ -555,8 +557,10 @@ export default function App() {
 
       {/* Main Workspace Viewport */}
       <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Google AdSense Slot — Top Full-Width Responsive Banner */}
-        <AdSenseSlot slotId="5462390377" creativeIndex={0} label="IKLAN SPONSOR UTAMA" />
+        {/* Google AdSense Slot 1: High CTR Top Leaderboard (Above the Fold) */}
+        <div className="w-full my-3">
+          <AdSenseSlot slotId="5462390377" minHeight={120} format="horizontal" />
+        </div>
 
         {/* Active Job Progress Banner */}
         {job.status !== 'idle' && (
@@ -608,8 +612,10 @@ export default function App() {
               }}
             />
 
-            {/* Google AdSense Slot — Sela-sela Padding Menu 1 */}
-            <AdSenseSlot slotId="5462390377" creativeIndex={1} />
+            {/* Google AdSense Slot 2: High CTR Pre-Action Banner (Below Hero, Above Input Section) */}
+            <div className="w-full my-4">
+              <AdSenseSlot slotId="5462390377" minHeight={280} />
+            </div>
 
             {/* Step 1: Input Ingestion (File Upload from Storage) */}
             <InputSourceSection
@@ -648,8 +654,10 @@ export default function App() {
               lang={lang}
             />
 
-            {/* Google AdSense Slot — Sela-sela Padding Menu 2 */}
-            <AdSenseSlot slotId="5462390377" creativeIndex={2} />
+            {/* Google AdSense Slot 3: High CTR Post-Input Banner (Below Video Ingestion) */}
+            <div className="w-full my-4">
+              <AdSenseSlot slotId="5462390377" minHeight={280} />
+            </div>
 
             {/* Step 2: Interactive Video Player & Timeline Scrubber (Placed ABOVE configuration) */}
             <VideoTimelineScrubber
@@ -676,8 +684,10 @@ export default function App() {
               }}
             />
 
-            {/* Google AdSense Slot — Sela-sela Padding Menu 3 */}
-            <AdSenseSlot slotId="5462390377" creativeIndex={3} />
+            {/* Google AdSense Slot 4: High CTR Mid-Interaction Banner (Below Scrubber, Above Controls) */}
+            <div className="w-full my-4">
+              <AdSenseSlot slotId="5462390377" minHeight={280} />
+            </div>
 
             {/* Step 3: Engine Configuration & Clip Trigger Button */}
             <ClippingControls
@@ -691,8 +701,10 @@ export default function App() {
               source={currentSource}
             />
 
-            {/* Google AdSense Slot — Sela-sela Padding Menu 4 */}
-            <AdSenseSlot slotId="5462390377" creativeIndex={4} />
+            {/* Google AdSense Slot 5: High CTR Pre-Results Banner (Above Clip Dashboard) */}
+            <div className="w-full my-4">
+              <AdSenseSlot slotId="5462390377" minHeight={280} />
+            </div>
 
             {/* Step 4: Clip Management Dashboard */}
             <ClipDashboard
@@ -706,14 +718,18 @@ export default function App() {
               onAttachVideoFile={handleAttachVideoFile}
             />
 
-            {/* Google AdSense Slot — Sela-sela Padding Menu 5 */}
-            <AdSenseSlot slotId="5462390377" creativeIndex={0} />
+            {/* Google AdSense Slot 6: High CTR Post-Results Banner (Below Clip Dashboard) */}
+            <div className="w-full my-4">
+              <AdSenseSlot slotId="5462390377" minHeight={280} />
+            </div>
 
             {/* Why Choose DriaClip Key Advantages */}
             <WhyDriaClipSection lang={lang} />
 
-            {/* Google AdSense Slot — Sela-sela Padding Menu 6 */}
-            <AdSenseSlot slotId="5462390377" creativeIndex={1} />
+            {/* Google AdSense Slot 7: High CTR In-Article Banner (Above SEO & Guide) */}
+            <div className="w-full my-4">
+              <AdSenseSlot slotId="5462390377" minHeight={280} />
+            </div>
 
             {/* Step 5: High-Value SEO Informational & FAQ Sections */}
             <SeoSections lang={lang} />
@@ -723,7 +739,9 @@ export default function App() {
         {/* Tab 2: Standalone Clips Queue */}
         {activeNavTab === 'clips' && (
           <div className="space-y-6">
-            <AdSenseSlot slotId="5462390377" creativeIndex={2} />
+            <div className="w-full my-4">
+              <AdSenseSlot slotId="5462390377" minHeight={280} />
+            </div>
             <ClipDashboard
               clips={generatedClips}
               source={currentSource}
@@ -734,30 +752,42 @@ export default function App() {
               lang={lang}
               onAttachVideoFile={handleAttachVideoFile}
             />
-            <AdSenseSlot slotId="5462390377" creativeIndex={3} />
+            <div className="w-full my-4">
+              <AdSenseSlot slotId="5462390377" minHeight={280} />
+            </div>
           </div>
         )}
 
         {/* Tab 3: Step-by-Step Guide View */}
         {activeNavTab === 'guide' && (
           <div className="space-y-6">
-            <AdSenseSlot slotId="5462390377" creativeIndex={4} />
+            <div className="w-full my-4">
+              <AdSenseSlot slotId="5462390377" minHeight={280} />
+            </div>
             <SeoSections lang={lang} />
-            <AdSenseSlot slotId="5462390377" creativeIndex={0} />
+            <div className="w-full my-4">
+              <AdSenseSlot slotId="5462390377" minHeight={280} />
+            </div>
           </div>
         )}
 
         {/* Tab 4: FAQ View */}
         {activeNavTab === 'faq' && (
           <div className="space-y-6">
-            <AdSenseSlot slotId="5462390377" creativeIndex={1} />
+            <div className="w-full my-4">
+              <AdSenseSlot slotId="5462390377" minHeight={280} />
+            </div>
             <SeoSections lang={lang} />
-            <AdSenseSlot slotId="5462390377" creativeIndex={2} />
+            <div className="w-full my-4">
+              <AdSenseSlot slotId="5462390377" minHeight={280} />
+            </div>
           </div>
         )}
 
-        {/* Google AdSense Slot — Bottom Full-Width Responsive Banner */}
-        <AdSenseSlot slotId="5462390377" creativeIndex={3} label="IKLAN SPONSOR RESMI" />
+        {/* Google AdSense Slot 8: High CTR Bottom Responsive Leaderboard */}
+        <div className="w-full my-4">
+          <AdSenseSlot slotId="5462390377" minHeight={120} format="horizontal" />
+        </div>
       </main>
 
       {/* Modals */}
@@ -798,6 +828,29 @@ export default function App() {
 
       {/* Floating Scroll to Top Button */}
       <ScrollToTopButton label={isId ? 'Kembali ke atas' : 'Back to top'} />
+
+      {/* Sticky Bottom High-CTR Floating Anchor Ad Bar (100% Viewability & High Conversion) */}
+      {showStickyAd && (
+        <aside 
+          aria-label="Sponsor Banner"
+          className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800/90 shadow-2xl p-0 m-0"
+        >
+          <div className="relative mx-auto w-full max-w-7xl px-2 sm:px-6">
+            <button
+              type="button"
+              onClick={() => setShowStickyAd(false)}
+              className="absolute top-1 right-2 sm:right-6 z-50 p-1 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer shadow-xs"
+              title={isId ? 'Tutup Iklan' : 'Close Ad'}
+              aria-label="Close"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+            <div className="w-full p-0 m-0 overflow-hidden">
+              <AdSenseSlot slotId="5462390377" minHeight={90} format="horizontal" />
+            </div>
+          </div>
+        </aside>
+      )}
     </div>
   );
 }

@@ -1291,14 +1291,16 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
             </p>
           </div>
 
-          {/* Google AdSense Slot — Terpasang Langsung di Bawah Menu Antrean Klip */}
-          <AdSenseSlot slotId="5462390377" creativeIndex={0} />
+          {/* Google AdSense Slot — High CTR Below Empty Dashboard */}
+          <div className="w-full my-4">
+            <AdSenseSlot slotId="5462390377" minHeight={280} />
+          </div>
         </div>
       )}
 
-      {/* Grid of Generated Clips (with active video players and Google AdSense Slots in every card/padding menu) */}
+      {/* Grid of Generated Clips with High CTR full-width AdSense breaks */}
       {clips.length > 0 && (
-        <div className="space-y-5">
+        <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {clips.map((clip, idx) => (
               <React.Fragment key={clip.id}>
@@ -1320,16 +1322,20 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
                   onSetActivePlayingId={setActivePlayingClipId}
                 />
 
-                {/* Google AdSense In-Feed Slot di Setiap Card Klip */}
-                <div className="w-full flex items-stretch">
-                  <AdSenseSlot slotId="5462390377" creativeIndex={idx} minHeight={140} />
-                </div>
+                {/* Google AdSense High CTR In-Feed Break every 3 clips */}
+                {(idx + 1) % 3 === 0 && idx < clips.length - 1 && (
+                  <div className="col-span-full w-full my-2">
+                    <AdSenseSlot slotId="5462390377" minHeight={280} />
+                  </div>
+                )}
               </React.Fragment>
             ))}
           </div>
 
-          {/* Google AdSense Slot — Full Responsive Banner di Bawah Grid Klip */}
-          <AdSenseSlot slotId="5462390377" creativeIndex={1} />
+          {/* Google AdSense Slot — Full-Width High CTR Banner Below Clips */}
+          <div className="w-full my-4">
+            <AdSenseSlot slotId="5462390377" minHeight={280} />
+          </div>
         </div>
       )}
     </div>
