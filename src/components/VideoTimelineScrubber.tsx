@@ -18,6 +18,7 @@ import {
 import { VideoSourceMetadata, SplitMarker, GeneratedClip } from '../types/driaclip';
 import { formatTimeCode } from '../services/videoClipper';
 import { Language, TRANSLATIONS } from '../i18n/translations';
+import { AdSenseSlot } from './AdSenseSlot';
 
 interface VideoTimelineScrubberProps {
   source: VideoSourceMetadata | null;
@@ -573,6 +574,11 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
           </div>
         </div>
       )}
+
+      {/* Google AdSense Slot — Terpasang Langsung pada Menu Timeline Scrubber */}
+      <div className="pt-2">
+        <AdSenseSlot slotId="5462390377" creativeIndex={2} />
+      </div>
     </div>
   );
 };

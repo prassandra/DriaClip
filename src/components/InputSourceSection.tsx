@@ -12,6 +12,7 @@ import {
 import { VideoSourceMetadata } from '../types/driaclip';
 import { formatTimeCode } from '../services/videoClipper';
 import { Language, TRANSLATIONS } from '../i18n/translations';
+import { AdSenseSlot } from './AdSenseSlot';
 
 interface InputSourceSectionProps {
   currentSource: VideoSourceMetadata | null;
@@ -336,6 +337,11 @@ export const InputSourceSection: React.FC<InputSourceSectionProps> = ({
               </div>
             </div>
           )}
+
+          {/* Google AdSense Slot — Terpasang Langsung pada Menu Input Sumber Video */}
+          <div className="pt-2">
+            <AdSenseSlot slotId="5462390377" creativeIndex={1} />
+          </div>
         </div>
       </div>
     </div>

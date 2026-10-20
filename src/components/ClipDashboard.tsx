@@ -1278,46 +1278,58 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
 
       {/* Empty State */}
       {clips.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-[#0b0f19]/60 p-10 sm:p-14 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 dark:bg-slate-900 text-violet-600 dark:text-violet-400 mb-3 border border-violet-200 dark:border-slate-800 shadow-xs">
-            <Sparkles className="h-6 w-6" />
+        <div className="space-y-4">
+          <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-[#0b0f19]/60 p-10 sm:p-14 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 dark:bg-slate-900 text-violet-600 dark:text-violet-400 mb-3 border border-violet-200 dark:border-slate-800 shadow-xs">
+              <Sparkles className="h-6 w-6" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              {t.dashboard.noClipsTitle}
+            </h3>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed">
+              {t.dashboard.noClipsDesc}
+            </p>
           </div>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-            {t.dashboard.noClipsTitle}
-          </h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed">
-            {t.dashboard.noClipsDesc}
-          </p>
+
+          {/* Google AdSense Slot — Terpasang Langsung di Bawah Menu Antrean Klip */}
+          <AdSenseSlot slotId="5462390377" creativeIndex={0} />
         </div>
       )}
 
-      {/* Grid of Generated Clips (with active video players and Google AdSense Slots after every card) */}
+      {/* Grid of Generated Clips (with active video players and Google AdSense Slots in every card/padding menu) */}
       {clips.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {clips.map((clip, idx) => (
-            <React.Fragment key={clip.id}>
-              <ClipCardItem
-                clip={clip}
-                index={idx}
-                source={source}
-                onPreviewClip={onPreviewClip}
-                onFineTuneClip={onFineTuneClip}
-                onDownloadSingle={handleDownloadSingle}
-                onCopyHook={handleCopyHook}
-                onUpdateClipCrop={onUpdateClipCrop}
-                isCopied={copiedId === clip.id}
-                isRendering={renderingClip?.id === clip.id}
-                renderingPercent={renderingClip?.id === clip.id ? (renderingClip?.progress ?? 0) : 0}
-                isId={isId}
-                t={t}
-                activePlayingId={activePlayingClipId}
-                onSetActivePlayingId={setActivePlayingClipId}
-              />
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {clips.map((clip, idx) => (
+              <React.Fragment key={clip.id}>
+                <ClipCardItem
+                  clip={clip}
+                  index={idx}
+                  source={source}
+                  onPreviewClip={onPreviewClip}
+                  onFineTuneClip={onFineTuneClip}
+                  onDownloadSingle={handleDownloadSingle}
+                  onCopyHook={handleCopyHook}
+                  onUpdateClipCrop={onUpdateClipCrop}
+                  isCopied={copiedId === clip.id}
+                  isRendering={renderingClip?.id === clip.id}
+                  renderingPercent={renderingClip?.id === clip.id ? (renderingClip?.progress ?? 0) : 0}
+                  isId={isId}
+                  t={t}
+                  activePlayingId={activePlayingClipId}
+                  onSetActivePlayingId={setActivePlayingClipId}
+                />
 
-              {/* Google AdSense In-Feed Slot After Card for clip.driacom.com */}
-              <AdSenseSlot slotId="5462390377" />
-            </React.Fragment>
-          ))}
+                {/* Google AdSense In-Feed Slot di Setiap Card Klip */}
+                <div className="w-full flex items-stretch">
+                  <AdSenseSlot slotId="5462390377" creativeIndex={idx} minHeight={140} />
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* Google AdSense Slot — Full Responsive Banner di Bawah Grid Klip */}
+          <AdSenseSlot slotId="5462390377" creativeIndex={1} />
         </div>
       )}
     </div>

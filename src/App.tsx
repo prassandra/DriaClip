@@ -555,6 +555,9 @@ export default function App() {
 
       {/* Main Workspace Viewport */}
       <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Google AdSense Slot — Top Full-Width Responsive Banner */}
+        <AdSenseSlot slotId="5462390377" creativeIndex={0} label="IKLAN SPONSOR UTAMA" />
+
         {/* Active Job Progress Banner */}
         {job.status !== 'idle' && (
           <div className={`rounded-2xl border p-4 sm:p-5 shadow-lg transition-all ${
@@ -606,7 +609,7 @@ export default function App() {
             />
 
             {/* Google AdSense Slot — Sela-sela Padding Menu 1 */}
-            <AdSenseSlot slotId="5462390377" />
+            <AdSenseSlot slotId="5462390377" creativeIndex={1} />
 
             {/* Step 1: Input Ingestion (File Upload from Storage) */}
             <InputSourceSection
@@ -646,7 +649,7 @@ export default function App() {
             />
 
             {/* Google AdSense Slot — Sela-sela Padding Menu 2 */}
-            <AdSenseSlot slotId="5462390377" />
+            <AdSenseSlot slotId="5462390377" creativeIndex={2} />
 
             {/* Step 2: Interactive Video Player & Timeline Scrubber (Placed ABOVE configuration) */}
             <VideoTimelineScrubber
@@ -674,7 +677,7 @@ export default function App() {
             />
 
             {/* Google AdSense Slot — Sela-sela Padding Menu 3 */}
-            <AdSenseSlot slotId="5462390377" />
+            <AdSenseSlot slotId="5462390377" creativeIndex={3} />
 
             {/* Step 3: Engine Configuration & Clip Trigger Button */}
             <ClippingControls
@@ -689,7 +692,7 @@ export default function App() {
             />
 
             {/* Google AdSense Slot — Sela-sela Padding Menu 4 */}
-            <AdSenseSlot slotId="5462390377" />
+            <AdSenseSlot slotId="5462390377" creativeIndex={4} />
 
             {/* Step 4: Clip Management Dashboard */}
             <ClipDashboard
@@ -704,13 +707,13 @@ export default function App() {
             />
 
             {/* Google AdSense Slot — Sela-sela Padding Menu 5 */}
-            <AdSenseSlot slotId="5462390377" />
+            <AdSenseSlot slotId="5462390377" creativeIndex={0} />
 
             {/* Why Choose DriaClip Key Advantages */}
             <WhyDriaClipSection lang={lang} />
 
             {/* Google AdSense Slot — Sela-sela Padding Menu 6 */}
-            <AdSenseSlot slotId="5462390377" />
+            <AdSenseSlot slotId="5462390377" creativeIndex={1} />
 
             {/* Step 5: High-Value SEO Informational & FAQ Sections */}
             <SeoSections lang={lang} />
@@ -720,7 +723,7 @@ export default function App() {
         {/* Tab 2: Standalone Clips Queue */}
         {activeNavTab === 'clips' && (
           <div className="space-y-6">
-            <AdSenseSlot slotId="5462390377" />
+            <AdSenseSlot slotId="5462390377" creativeIndex={2} />
             <ClipDashboard
               clips={generatedClips}
               source={currentSource}
@@ -731,27 +734,30 @@ export default function App() {
               lang={lang}
               onAttachVideoFile={handleAttachVideoFile}
             />
-            <AdSenseSlot slotId="5462390377" />
+            <AdSenseSlot slotId="5462390377" creativeIndex={3} />
           </div>
         )}
 
         {/* Tab 3: Step-by-Step Guide View */}
         {activeNavTab === 'guide' && (
           <div className="space-y-6">
-            <AdSenseSlot slotId="5462390377" />
+            <AdSenseSlot slotId="5462390377" creativeIndex={4} />
             <SeoSections lang={lang} />
-            <AdSenseSlot slotId="5462390377" />
+            <AdSenseSlot slotId="5462390377" creativeIndex={0} />
           </div>
         )}
 
         {/* Tab 4: FAQ View */}
         {activeNavTab === 'faq' && (
           <div className="space-y-6">
-            <AdSenseSlot slotId="5462390377" />
+            <AdSenseSlot slotId="5462390377" creativeIndex={1} />
             <SeoSections lang={lang} />
-            <AdSenseSlot slotId="5462390377" />
+            <AdSenseSlot slotId="5462390377" creativeIndex={2} />
           </div>
         )}
+
+        {/* Google AdSense Slot — Bottom Full-Width Responsive Banner */}
+        <AdSenseSlot slotId="5462390377" creativeIndex={3} label="IKLAN SPONSOR RESMI" />
       </main>
 
       {/* Modals */}
