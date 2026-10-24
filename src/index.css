@@ -76,28 +76,22 @@ html:not(.dark) {
   background-size: 32px 32px;
 }
 
-/* Automatically collapse unfilled Google AdSense slots so they never leave blank white space */
+/* Google AdSense container and responsive iframe rules */
 ins.adsbygoogle {
+  display: block !important;
   background-color: transparent !important;
   max-width: 100% !important;
   margin-left: auto !important;
   margin-right: auto !important;
+  text-align: center !important;
 }
 
 ins.adsbygoogle iframe {
   max-width: 100% !important;
   background-color: transparent !important;
-}
-
-ins.adsbygoogle[data-ad-status="unfilled"],
-ins.adsbygoogle[data-adsbygoogle-status="done"]:empty,
-.adsense-wrapper:has(ins[data-ad-status="unfilled"]),
-.adsense-wrapper:has(ins[data-adsbygoogle-status="done"]:empty) {
-  display: none !important;
-  height: 0 !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  border-radius: 0.5rem;
 }
 
 /* Shimmer Loading Skeleton Effect */

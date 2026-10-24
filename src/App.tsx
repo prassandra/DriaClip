@@ -555,8 +555,8 @@ export default function App() {
 
       {/* Main Workspace Viewport */}
       <main className="flex-1 mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-5 sm:space-y-6">
-        {/* Google AdSense Slot 1: High CTR Top Leaderboard (Above the Fold) */}
-        <AdSenseSlot slotId="5462390377" format="horizontal" />
+        {/* Google AdSense Slot 1: High CTR Top Responsive Banner (Above the Fold) */}
+        <AdSenseSlot slotId="5462390377" format="auto" />
 
         {/* Active Job Progress Banner */}
         {job.status !== 'idle' && (
@@ -757,7 +757,7 @@ export default function App() {
         )}
 
         {/* Google AdSense Slot: High CTR Bottom Responsive Leaderboard */}
-        <AdSenseSlot slotId="5462390377" format="horizontal" />
+        <AdSenseSlot slotId="5462390377" format="auto" />
       </main>
 
       {/* Modals */}
