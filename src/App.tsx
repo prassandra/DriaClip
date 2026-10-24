@@ -734,7 +734,6 @@ export default function App() {
               stageMessage={job.stageMessage}
               expectedClipCount={job.totalClipsToGenerate || 3}
             />
-            <AdSenseSlot slotId="5462390377" format="auto" />
           </div>
         )}
 
@@ -743,7 +742,6 @@ export default function App() {
           <div className="space-y-5 sm:space-y-6">
             <AdSenseSlot slotId="5462390377" format="auto" />
             <SeoSections lang={lang} />
-            <AdSenseSlot slotId="5462390377" format="auto" />
           </div>
         )}
 
@@ -752,7 +750,6 @@ export default function App() {
           <div className="space-y-5 sm:space-y-6">
             <AdSenseSlot slotId="5462390377" format="auto" />
             <SeoSections lang={lang} />
-            <AdSenseSlot slotId="5462390377" format="auto" />
           </div>
         )}
 
