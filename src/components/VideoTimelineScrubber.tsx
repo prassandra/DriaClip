@@ -18,7 +18,7 @@ import {
 import { VideoSourceMetadata, SplitMarker, GeneratedClip } from '../types/driaclip';
 import { formatTimeCode } from '../services/videoClipper';
 import { Language, TRANSLATIONS } from '../i18n/translations';
-import { AdSenseSlot } from './AdSenseSlot';
+import { VideoPlayerSkeleton, TimelineWaveformSkeleton } from './ShimmerSkeleton';
 
 interface VideoTimelineScrubberProps {
   source: VideoSourceMetadata | null;
@@ -31,6 +31,8 @@ interface VideoTimelineScrubberProps {
   lang: Language;
   onUpdateDuration?: (newDuration: number) => void;
   onUpdateDimensions?: (width: number, height: number) => void;
+  isProcessing?: boolean;
+  isSourceLoading?: boolean;
 }
 
 export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
@@ -44,6 +46,8 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
   lang,
   onUpdateDuration,
   onUpdateDimensions,
+  isProcessing = false,
+  isSourceLoading = false,
 }) => {
   const t = TRANSLATIONS[lang];
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -56,6 +60,7 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
   const [editDurationVal, setEditDurationVal] = useState(String(source?.duration || 600));
   const [isMuted, setIsMuted] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [isVideoLoading, setIsVideoLoading] = useState(true);
 
   // Dynamic detected dimensions state that updates on video metadata load
   const [videoDims, setVideoDims] = useState<{ width: number; height: number }>({
@@ -91,6 +96,7 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
             new (window as any).YT.Player('main-timeline-yt', {
               events: {
                 onReady: (e: any) => {
+                  setIsVideoLoading(false);
                   const d = Math.round(e.target.getDuration());
                   if (d > 0) {
                     setDuration(d);
@@ -127,8 +133,9 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
     }
   }, [youtubeId]);
 
-  // Sync duration when source changes
+  // Sync duration and video loading state when source changes
   useEffect(() => {
+    setIsVideoLoading(true);
     if (source && source.duration && source.duration > 0) {
       setDuration(source.duration);
     }
@@ -149,6 +156,7 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
   };
 
   const handleLoadedMetadata = () => {
+    setIsVideoLoading(false);
     if (videoRef.current) {
       const vw = videoRef.current.videoWidth;
       const vh = videoRef.current.videoHeight;
@@ -270,7 +278,7 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-[#0b0f19]/60 p-8 sm:p-14 text-center">
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-[#0b0f19]/60 p-7 sm:p-12 text-center relative overflow-hidden">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 dark:bg-violet-950/60 border border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 mb-3 shadow-xs">
             <Film className="h-7 w-7" />
           </div>
@@ -280,6 +288,17 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
             {t.timeline.emptyDesc}
           </p>
+
+          {/* Ghost waveform skeleton preview in empty state */}
+          <div className="mt-5 w-full max-w-md rounded-xl bg-slate-200/50 dark:bg-slate-800/40 p-2.5 flex items-center justify-between gap-1 opacity-70 border border-slate-200/60 dark:border-slate-800/60">
+            {Array.from({ length: 28 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex-1 max-w-[5px] rounded-full bg-slate-300 dark:bg-slate-700 transition-all"
+                style={{ height: `${25 + ((i * 7) % 55)}%` }}
+              />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -294,6 +313,12 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
             <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <span>{t.timeline.title}</span>
             </h2>
+            {isProcessing && (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-violet-100 dark:bg-violet-950/80 text-violet-700 dark:text-violet-300 border border-violet-300 dark:border-violet-700 animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                <span>{lang === 'id' ? 'Memproses Aliran Media...' : 'Processing Media Stream...'}</span>
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-mono mt-1">
             <span className="font-semibold text-slate-900 dark:text-slate-200 truncate max-w-xs">
@@ -372,6 +397,20 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
       <div className={`relative w-full rounded-2xl overflow-hidden bg-black flex items-center justify-center border border-slate-800 shadow-2xl group transition-all duration-300 ${
         isPortrait ? 'max-w-[320px] sm:max-w-[360px] mx-auto aspect-[9/16]' : 'w-full aspect-video'
       }`}>
+        {/* Shimmer loading skeleton when video stream is initializing or decoding */}
+        {(isVideoLoading || isSourceLoading) && !isPlaying && (
+          <div className="absolute inset-0 z-30 pointer-events-none">
+            <VideoPlayerSkeleton
+              isPortrait={isPortrait}
+              statusText={
+                isProcessing
+                  ? (lang === 'id' ? 'Sedang Memproses Media Video...' : 'Processing Video Media...')
+                  : (lang === 'id' ? 'Menyiapkan Aliran Video & Frame...' : 'Preparing Video Stream & Frames...')
+              }
+            />
+          </div>
+        )}
+
         {isYouTube ? (
           /* Official YouTube Embedded Player with Full Playback, Audio, and Video Stream */
           <iframe
@@ -383,6 +422,7 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
             onLoad={(e) => {
+              setIsVideoLoading(false);
               try {
                 const cw = e.currentTarget.contentWindow;
                 cw?.postMessage(JSON.stringify({ event: 'command', func: 'unloadModule', args: ['captions'] }), '*');
@@ -403,7 +443,10 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
               onError={(e) => {
                 console.warn('[DriaClip] Timeline video error caught gracefully:', e);
                 setIsPlaying(false);
+                setIsVideoLoading(false);
               }}
+              onLoadedData={() => setIsVideoLoading(false)}
+              onCanPlay={() => setIsVideoLoading(false)}
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
               onDurationChange={handleDurationChange}
@@ -492,8 +535,19 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
         )}
       </div>
 
+      {/* Real-time Dynamic Shimmer Waveform Skeleton while engine analyzes audio speech & scene cuts */}
+      {isProcessing && (
+        <TimelineWaveformSkeleton
+          label={
+            lang === 'id'
+              ? 'Menganalisis Titik Potong, Dialog Vokal & Gelombang Audio...'
+              : 'Analyzing Cut Markers, Speech Hooks & Audio Waveform...'
+          }
+        />
+      )}
+
       {/* Interactive Timeline Navigation Scrubber Bar (Only scrubber track, no playhead text or quick seek) */}
-      {isCustomMarkerMode && (
+      {isCustomMarkerMode && !isProcessing && (
         <div className="space-y-2 pt-1">
           <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 font-mono">
             <span className="font-semibold text-slate-800 dark:text-slate-200">
@@ -574,11 +628,6 @@ export const VideoTimelineScrubber: React.FC<VideoTimelineScrubberProps> = ({
           </div>
         </div>
       )}
-
-      {/* Google AdSense Slot — Terpasang Langsung pada Menu Timeline Scrubber */}
-      <div className="pt-2">
-        <AdSenseSlot slotId="5462390377" creativeIndex={2} />
-      </div>
     </div>
   );
 };

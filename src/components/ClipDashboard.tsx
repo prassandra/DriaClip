@@ -41,6 +41,7 @@ import { Language, TRANSLATIONS } from '../i18n/translations';
 import { SAMPLE_VIDEOS } from '../data/sampleVideos';
 import { WatermarkBadge } from './WatermarkBadge';
 import { AdSenseSlot } from './AdSenseSlot';
+import { ClipCardSkeleton } from './ShimmerSkeleton';
 
 interface ClipDashboardProps {
   clips: GeneratedClip[];
@@ -51,6 +52,10 @@ interface ClipDashboardProps {
   onSelectSampleVideo?: (sample: any) => void;
   lang: Language;
   onAttachVideoFile?: (file: File) => void;
+  isProcessing?: boolean;
+  jobProgress?: number;
+  stageMessage?: string;
+  expectedClipCount?: number;
 }
 
 interface ClipCardItemProps {
@@ -348,6 +353,29 @@ const ClipCardItem: React.FC<ClipCardItemProps> = ({
       onMouseLeave={() => { setIsHovered(false); setShowControls(false); }}
       className="group relative flex flex-col rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#0b0f19] overflow-hidden shadow-sm hover:border-violet-500/70 hover:shadow-xl transition-all"
     >
+      {/* Active Video Slicing / Rendering Shimmer Overlay */}
+      {isRendering && (
+        <div className="absolute inset-0 z-40 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-center space-y-3 shimmer-skeleton border-2 border-violet-500 rounded-2xl">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-xl shadow-violet-500/30">
+            <Scissors className="h-6 w-6 animate-pulse" />
+          </div>
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-white block">
+              {isId ? 'Memotong & Merender Klip Video...' : 'Slicing & Rendering Clip...'}
+            </span>
+            <span className="font-mono text-sm font-bold text-violet-300">
+              {renderingPercent}%
+            </span>
+          </div>
+          <div className="w-3/4 h-2 rounded-full bg-slate-800 overflow-hidden border border-violet-500/30">
+            <div
+              className="h-full bg-gradient-to-r from-violet-500 via-indigo-400 to-cyan-400 transition-all duration-200"
+              style={{ width: `${Math.max(5, renderingPercent)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Video Player Container */}
       <div 
         className={`relative overflow-hidden bg-black flex items-center justify-center ${
@@ -889,6 +917,10 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
   onSelectSampleVideo,
   lang,
   onAttachVideoFile,
+  isProcessing = false,
+  jobProgress = 0,
+  stageMessage,
+  expectedClipCount = 3,
 }) => {
   const t = TRANSLATIONS[lang];
   const isId = lang === 'id';
@@ -1276,10 +1308,48 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
         </div>
       )}
 
-      {/* Empty State */}
-      {clips.length === 0 && (
-        <div className="space-y-4">
-          <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-[#0b0f19]/60 p-10 sm:p-14 text-center">
+      {/* Media Processing Active Shimmer Skeleton State (When clips are being extracted & analyzed) */}
+      {isProcessing && clips.length === 0 && (
+        <div className="space-y-6">
+          {/* Active Processing Live Status Banner */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-violet-500/10 via-indigo-500/10 to-violet-500/5 border border-violet-300 dark:border-violet-800/80 shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 text-white shadow-md shadow-violet-500/20">
+                <Sparkles className="h-5 w-5 animate-spin" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <span>{isId ? 'Sedang Memproses & Memotong Klip Video' : 'Processing & Cutting Video Clips'}</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300 border border-violet-300 dark:border-violet-700">
+                    AI Auto-Clipper
+                  </span>
+                </span>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  {stageMessage || (isId ? 'Mendeteksi lonjakan energi vokal, pemotongan visual adegan, dan format 9:16...' : 'Detecting speech energy peaks, scene cuts, and 9:16 re-framing...')}
+                </p>
+              </div>
+            </div>
+
+            {jobProgress > 0 && (
+              <div className="flex items-center gap-2 font-mono text-xs font-bold text-violet-700 dark:text-violet-300 bg-white/80 dark:bg-slate-900/80 px-3 py-1.5 rounded-xl border border-violet-300 dark:border-violet-700">
+                <span>{jobProgress}%</span>
+              </div>
+            )}
+          </div>
+
+          {/* Shimmer Loading Skeleton Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: Math.max(3, expectedClipCount) }).map((_, i) => (
+              <ClipCardSkeleton key={`skeleton-${i}`} aspectRatio="9:16" index={i} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty State (When idle and no clips yet) */}
+      {!isProcessing && clips.length === 0 && (
+        <div className="space-y-6">
+          <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-[#0b0f19]/60 p-8 sm:p-12 text-center relative overflow-hidden">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 dark:bg-slate-900 text-violet-600 dark:text-violet-400 mb-3 border border-violet-200 dark:border-slate-800 shadow-xs">
               <Sparkles className="h-6 w-6" />
             </div>
@@ -1289,16 +1359,24 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed">
               {t.dashboard.noClipsDesc}
             </p>
-          </div>
 
-          {/* Google AdSense Slot — High CTR Below Empty Dashboard */}
-          <div className="w-full my-4">
-            <AdSenseSlot slotId="5462390377" minHeight={280} />
+            {/* Subtle Ghost Wireframe Preview demonstrating 3 clip cards layout */}
+            <div className="mt-6 w-full max-w-xl grid grid-cols-3 gap-3 opacity-45 pointer-events-none">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-200/40 dark:bg-slate-800/40 p-2 space-y-2">
+                  <div className="aspect-[9/16] rounded-lg bg-slate-300/70 dark:bg-slate-700/50 flex items-center justify-center">
+                    <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold">9:16 #{n}</span>
+                  </div>
+                  <div className="h-2 w-3/4 rounded bg-slate-300/80 dark:bg-slate-700/60" />
+                  <div className="h-2 w-1/2 rounded bg-slate-300/60 dark:bg-slate-700/40" />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Grid of Generated Clips with High CTR full-width AdSense breaks */}
+      {/* Grid of Generated Clips (With additional skeleton cards if still processing) */}
       {clips.length > 0 && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -1325,16 +1403,23 @@ export const ClipDashboard: React.FC<ClipDashboardProps> = ({
                 {/* Google AdSense High CTR In-Feed Break every 3 clips */}
                 {(idx + 1) % 3 === 0 && idx < clips.length - 1 && (
                   <div className="col-span-full w-full my-2">
-                    <AdSenseSlot slotId="5462390377" minHeight={280} />
+                    <AdSenseSlot slotId="5462390377" />
                   </div>
                 )}
               </React.Fragment>
             ))}
+
+            {/* If still processing remaining clips, display shimmer skeleton placeholders */}
+            {isProcessing && clips.length < expectedClipCount && (
+              Array.from({ length: expectedClipCount - clips.length }).map((_, i) => (
+                <ClipCardSkeleton key={`skeleton-tail-${i}`} aspectRatio="9:16" index={clips.length + i} />
+              ))
+            )}
           </div>
 
           {/* Google AdSense Slot — Full-Width High CTR Banner Below Clips */}
           <div className="w-full my-4">
-            <AdSenseSlot slotId="5462390377" minHeight={280} />
+            <AdSenseSlot slotId="5462390377" />
           </div>
         </div>
       )}

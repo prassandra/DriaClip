@@ -11,7 +11,6 @@ import {
   Scissors
 } from 'lucide-react';
 import { Language } from '../i18n/translations';
-import { AdSenseSlot } from './AdSenseSlot';
 
 interface WhyDriaClipSectionProps {
   lang: Language;
@@ -110,11 +109,6 @@ export const WhyDriaClipSection: React.FC<WhyDriaClipSectionProps> = ({ lang }) 
             </div>
           );
         })}
-      </div>
-
-      {/* Google AdSense Slot — Terpasang Langsung pada Card Keunggulan Utama */}
-      <div className="pt-2">
-        <AdSenseSlot slotId="5462390377" creativeIndex={3} />
       </div>
     </section>
   );

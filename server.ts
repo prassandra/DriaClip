@@ -1,12 +1,14 @@
+import http from 'http';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { createServer as createViteServer } from 'vite';
+import { createServer as createViteServer, ViteDevServer } from 'vite';
 import { handleRenderClip, handleRenderLocalClip } from './src/server/clipRenderer.ts';
 
 const app = express();
 const PORT = 3000;
+const httpServer = http.createServer(app);
 
 // 301 Permanent Redirect from driaclip.pages.dev to clip.driacom.com
 app.use((req, res, next) => {
@@ -237,20 +239,39 @@ app.delete('/api/youtube-cookies', (_req, res) => {
 const isProd = process.env.NODE_ENV === 'production';
 const distPath = path.resolve(process.cwd(), 'dist');
 
+let vite: ViteDevServer | null = null;
+
 if (isProd && fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   app.get('*', (_req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 } else {
-  // Mount Vite middleware in development
-  const vite = await createViteServer({
-    server: { middlewareMode: true, hmr: process.env.DISABLE_HMR !== 'true' },
+  // Mount Vite middleware in development with HMR multiplexed over httpServer
+  vite = await createViteServer({
+    server: { 
+      middlewareMode: true, 
+      hmr: process.env.DISABLE_HMR !== 'true' ? { server: httpServer } : false,
+      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    },
     appType: 'spa',
   });
   app.use(vite.middlewares);
 }
 
-app.listen(PORT, '0.0.0.0', () => {
+const server = httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`DriaClip Full-Stack Engine running on http://0.0.0.0:${PORT}`);
 });
+
+const handleShutdown = async () => {
+  try {
+    if (vite) await vite.close();
+  } catch {}
+  server.close(() => {
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(0), 1500).unref();
+};
+
+process.on('SIGTERM', handleShutdown);
+process.on('SIGINT', handleShutdown);

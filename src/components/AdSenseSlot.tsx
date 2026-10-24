@@ -1,39 +1,67 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface AdSenseSlotProps {
   slotId?: string;
   adClient?: string;
   format?: 'auto' | 'fluid' | 'rectangle' | 'horizontal';
   className?: string;
-  minHeight?: number;
-  label?: string;
-  creativeIndex?: number;
+  fullWidthResponsive?: boolean;
 }
 
 /**
  * AdSenseSlot:
- * - Zero padding (p-0) so the slot has maximum available dimensions
- * - Zero dummy text or placeholder labels
- * - Standard high-CTR dimensions (defaults to minHeight 280px for in-content, or 100px for banners)
- *   so AdSense responsive algorithms can serve standard sizes (300x250, 336x280, 728x90, etc.)
- * - Reliable adsbygoogle push initialization
+ * - Direct Google AdSense Official Integration (<ins class="adsbygoogle">)
+ * - data-full-width-responsive="false" prevents mobile text cut-off caused by negative margins
+ * - Transparent background prevents flashing white boxes in dark mode
+ * - Automatic collapse (display: none; height: 0) on unfilled status so empty slots never leave blank space
+ * - Fully responsive width, centered within container
  */
 export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
   slotId = '5462390377',
   adClient = 'ca-pub-2212969526982215',
   format = 'auto',
   className = '',
-  minHeight = 280,
+  fullWidthResponsive = false,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const insRef = useRef<HTMLModElement>(null);
+  const [isUnfilled, setIsUnfilled] = useState(false);
   const isPushed = useRef(false);
 
   useEffect(() => {
-    if (isPushed.current) return;
+    const el = insRef.current;
+    if (!el) return;
 
-    const pushAd = () => {
-      if (!insRef.current) return;
-      if (insRef.current.getAttribute('data-adsbygoogle-status')) return;
+    // Check if Google has already flagged it as unfilled
+    if (el.getAttribute('data-ad-status') === 'unfilled') {
+      setIsUnfilled(true);
+      return;
+    }
+
+    // MutationObserver to listen for Google AdSense status changes
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === 'attributes') {
+          const adStatus = el.getAttribute('data-ad-status');
+          if (adStatus === 'unfilled') {
+            setIsUnfilled(true);
+            if (containerRef.current) {
+              containerRef.current.style.display = 'none';
+            }
+          }
+        }
+      }
+    });
+
+    observer.observe(el, {
+      attributes: true,
+      attributeFilter: ['data-ad-status', 'style', 'data-adsbygoogle-status'],
+    });
+
+    // Safely request ad fill
+    const pushTimer = setTimeout(() => {
+      if (isPushed.current) return;
+      if (!el || el.getAttribute('data-adsbygoogle-status')) return;
 
       try {
         if (typeof window !== 'undefined') {
@@ -41,19 +69,45 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
           isPushed.current = true;
         }
       } catch (err) {
-        console.warn('AdSense push notice:', err);
+        // Tag already initialized or suppressed
       }
-    };
+    }, 60);
 
-    // Small delay ensures container layout is computed before AdSense measures dimensions
-    const timer = setTimeout(pushAd, 80);
-    return () => clearTimeout(timer);
+    // Timeout check: if unfilled or empty after response, collapse cleanly
+    const checkTimer = setTimeout(() => {
+      if (el) {
+        const adStatus = el.getAttribute('data-ad-status');
+        const doneStatus = el.getAttribute('data-adsbygoogle-status');
+        if (adStatus === 'unfilled' || (doneStatus === 'done' && el.clientHeight === 0)) {
+          setIsUnfilled(true);
+          if (containerRef.current) {
+            containerRef.current.style.display = 'none';
+          }
+        }
+      }
+    }, 3000);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(pushTimer);
+      clearTimeout(checkTimer);
+    };
   }, []);
+
+  if (isUnfilled) {
+    return null;
+  }
 
   return (
     <div
-      className={`w-full p-0 m-0 overflow-hidden block ${className}`}
-      style={{ minHeight: `${minHeight}px`, width: '100%' }}
+      ref={containerRef}
+      className={`adsense-wrapper w-full p-0 m-0 overflow-hidden flex justify-center items-center bg-transparent transition-all duration-200 ${className}`}
+      style={{
+        width: '100%',
+        maxWidth: '100%',
+        margin: '0 auto',
+        backgroundColor: 'transparent',
+      }}
     >
       <ins
         ref={insRef}
@@ -61,14 +115,15 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
         style={{
           display: 'block',
           width: '100%',
-          minHeight: `${minHeight}px`,
-          margin: 0,
-          padding: 0,
+          maxWidth: '100%',
+          backgroundColor: 'transparent',
+          margin: '0 auto',
+          textAlign: 'center',
         }}
         data-ad-client={adClient}
         data-ad-slot={slotId}
         data-ad-format={format}
-        data-full-width-responsive="true"
+        data-full-width-responsive={fullWidthResponsive ? 'true' : 'false'}
       />
     </div>
   );

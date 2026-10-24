@@ -91,8 +91,8 @@ export const SeoSections: React.FC<SeoSectionsProps> = ({ lang }) => {
         </div>
       </section>
 
-      {/* Google AdSense Slot — Sela-sela Padding Menu Panduan & FAQ */}
-      <AdSenseSlot slotId="5462390377" creativeIndex={4} />
+      {/* Google AdSense Slot: High CTR Break Between Guide and FAQ */}
+      <AdSenseSlot slotId="5462390377" format="auto" className="my-2" />
 
       {/* 2. Real SEO FAQ Accordion Section */}
       <section id="faq" className="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white/95 dark:bg-[#0f172a]/95 p-6 sm:p-8 space-y-6 shadow-lg backdrop-blur-md transition-colors">
@@ -139,11 +139,6 @@ export const SeoSections: React.FC<SeoSectionsProps> = ({ lang }) => {
               </div>
             );
           })}
-        </div>
-
-        {/* Google AdSense Slot — Terpasang Langsung pada Card FAQ */}
-        <div className="pt-2">
-          <AdSenseSlot slotId="5462390377" creativeIndex={0} />
         </div>
       </section>
     </div>
